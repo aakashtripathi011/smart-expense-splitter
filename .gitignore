@@ -1,0 +1,23 @@
+# Frontend
+USICT024/frontend/node_modules/
+USICT024/frontend/.next/
+USICT024/frontend/out/
+
+# Backend
+USICT024/backend/venv/
+USICT024/backend/__pycache__/
+USICT024/backend/*.pyc
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.pyc
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
