@@ -109,15 +109,11 @@ export default function Receipt() {
         <div className="mt-6 flex justify-end">
 
           <Link
-            href="/split"
-            className={`rounded-xl px-7 py-3.5 text-xs  text-white font-semibold uppercase tracking-wider transition ${
-              fileName
-                ? "bg-white text-[#152238] hover:bg-slate-200"
-                : "pointer-events-none bg-[#1a304d] text-slate-600"
-            }`}
-          >
-            Continue →
-          </Link>
+  href="/split"
+  className="rounded-xl bg-white px-7 py-3.5 text-xs font-semibold uppercase tracking-wider text-[#152238] transition hover:bg-slate-200"
+>
+  Continue →
+</Link>
 
         </div>
 
