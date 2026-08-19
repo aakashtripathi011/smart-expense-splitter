@@ -1,11 +1,13 @@
 const express = require("express");
 const pool = require("./config/db");
+const receiptRoutes = require("./routes/receiptRoutes");
 
 const app = express();
 
 const PORT = 5000;
 
 app.use(express.json());
+app.use("/api/receipts", receiptRoutes);
 
 app.get("/", (req, res) => {
     res.send("Smart Expense Splitter API is running");

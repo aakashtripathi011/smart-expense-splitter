@@ -12,8 +12,10 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@google/genai": "^2.17.1",
     "dotenv": "^17.4.2",
     "express": "^5.x",
+    "multer": "^2.2.0",
     "pg": "^8.23.0"
   },
   "devDependencies": {
