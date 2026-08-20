@@ -24,6 +24,10 @@ const slides = [
 
 export default function Login() {
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [email, setEmail] = useState("");
+const [password, setPassword] = useState("");
+const [error, setError] = useState("");
+const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -34,6 +38,43 @@ export default function Login() {
   }, []);
 
   const slide = slides[currentSlide];
+
+  const handleLogin = async (e) => {
+  e.preventDefault();
+
+  setError("");
+  setLoading(true);
+
+  try {
+    const response = await fetch("http://localhost:5000/api/auth/login", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        email,
+        password,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      setError(data.message || "Login failed");
+      return;
+    }
+
+    localStorage.setItem("token", data.token);
+    localStorage.setItem("user", JSON.stringify(data.user));
+
+    window.location.href = "/dashboard";
+
+  } catch (error) {
+    setError("Unable to connect to server");
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <main className="min-h-screen bg-[#152238] font-mono text-white">
@@ -102,7 +143,7 @@ export default function Login() {
 
             {/* FORM */}
 
-            <form className="space-y-5">
+            <form onSubmit={handleLogin} className="space-y-5">
 
               {/* EMAIL */}
 
@@ -119,6 +160,8 @@ export default function Login() {
                   id="email"
                   type="email"
                   placeholder="you@example.com"
+                  value={email}
+onChange={(e) => setEmail(e.target.value)}
                   className="w-full rounded-xl border border-slate-800 bg-[#091626] px-4 py-3.5 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
                 />
 
@@ -140,6 +183,7 @@ export default function Login() {
 
                   <button
                     type="button"
+                    
                     className="text-xs text-blue-400 transition hover:text-blue-300"
                   >
                     Forgot password?
@@ -151,16 +195,24 @@ export default function Login() {
                   id="password"
                   type="password"
                   placeholder="••••••••"
+                   value={password}
+  onChange={(e) => setPassword(e.target.value)}
                   className="w-full rounded-xl border border-slate-800 bg-[#091626] px-4 py-3.5 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
                 />
 
               </div>
 
+             {error && (
+  <p className="text-sm text-red-400">
+    {error}
+  </p>
+)}
 
               {/* LOGIN */}
 
               <button
-                type="submit"
+                  type="submit"
+                  disabled={loading}
                 className="w-full rounded-xl bg-white py-3.5 text-sm font-semibold text-[#07111f] transition duration-200 hover:scale-[1.01] hover:bg-slate-200"
               >
                 Log in
