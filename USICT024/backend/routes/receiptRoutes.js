@@ -1,4 +1,5 @@
 const express = require("express");
+const verifyToken = require("../middleware/authMiddleware");
 
 const router = express.Router();
 
@@ -7,6 +8,11 @@ const {
     createReceipt,
 } = require("../controllers/receiptController");
 
-router.post("/", upload.single("receipt"), createReceipt);
+router.post(
+    "/",
+    verifyToken,
+    upload.single("receipt"),
+    createReceipt
+);
 
 module.exports = router;
