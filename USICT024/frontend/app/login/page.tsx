@@ -239,7 +239,7 @@ onChange={(e) => setEmail(e.target.value)}
             {/* GUEST */}
 
             <Link
-              href="/dashboard"
+              href="/register"
               className="block w-full rounded-xl border border-slate-800 py-3.5 text-center text-sm text-slate-300 transition hover:border-slate-600 hover:bg-[#0b192b] hover:text-white"
             >
               Continue as guest
