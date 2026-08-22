@@ -6,12 +6,13 @@ const {
 } = require("../services/splitService");
 
 
-// =========================
+// ============================================================
 // CREATE EXPENSE
-// =========================
+// ============================================================
 
 const createExpense = async (req, res) => {
     try {
+
         const {
             groupId,
             description,
@@ -19,18 +20,38 @@ const createExpense = async (req, res) => {
             splitType,
             users,
             items,
+            payerId,
         } = req.body;
 
+        // Person currently logged in
         const createdBy = req.user.id;
 
-        if (!groupId || !description || !amount || !splitType) {
+        // ========================================================
+        // BASIC VALIDATION
+        // ========================================================
+
+        if (
+            !groupId ||
+            !description ||
+            !amount ||
+            !splitType
+        ) {
             return res.status(400).json({
                 message:
                     "groupId, description, amount and splitType are required",
             });
         }
 
-        // Check if user is the group admin
+        if (Number(amount) <= 0) {
+            return res.status(400).json({
+                message: "Amount must be greater than zero",
+            });
+        }
+
+        // ========================================================
+        // CHECK GROUP
+        // ========================================================
+
         const groupCheck = await pool.query(
             `SELECT created_by
              FROM groups
@@ -44,67 +65,346 @@ const createExpense = async (req, res) => {
             });
         }
 
+        // ========================================================
+        // ONLY ADMIN CAN CREATE EXPENSE
+        // ========================================================
+
         if (
             Number(groupCheck.rows[0].created_by) !==
             Number(createdBy)
         ) {
             return res.status(403).json({
-                message: "Only the group admin can create expenses",
+                message:
+                    "Only the group admin can create expenses",
             });
         }
 
-        // Create expense
-        const expenseResult = await pool.query(
-            `INSERT INTO expenses
-                (group_id, created_by, total, description)
-             VALUES ($1, $2, $3, $4)
-             RETURNING *`,
-            [groupId, createdBy, amount, description]
+        // ========================================================
+        // PAYER IS REQUIRED
+        // ========================================================
+
+        if (!payerId) {
+            return res.status(400).json({
+                message:
+                    "Please select who actually paid",
+            });
+        }
+
+        const actualPayerId = Number(payerId);
+
+        // ========================================================
+        // CHECK PAYER IS A GROUP MEMBER
+        // ========================================================
+
+        const payerCheck = await pool.query(
+            `SELECT gm.user_id, u.name
+             FROM group_members gm
+             JOIN users u
+                ON gm.user_id = u.id
+             WHERE gm.group_id = $1
+               AND gm.user_id = $2`,
+            [
+                groupId,
+                actualPayerId,
+            ]
         );
 
-        const expense = expenseResult.rows[0];
+        if (payerCheck.rows.length === 0) {
+            return res.status(400).json({
+                message:
+                    "Selected payer is not a member of this group",
+            });
+        }
+
+        // ========================================================
+        // VALIDATE INCLUDED USERS
+        // ========================================================
+
+        let includedUsers = [];
+
+        if (splitType === "equal") {
+
+            if (
+                !Array.isArray(users) ||
+                users.length === 0
+            ) {
+                return res.status(400).json({
+                    message:
+                        "Please select at least one person",
+                });
+            }
+
+            includedUsers = users.map(
+                (user) => Number(
+                    typeof user === "object"
+                        ? user.id
+                        : user
+                )
+            );
+
+        } else if (splitType === "item") {
+
+            if (
+                !Array.isArray(items) ||
+                items.length === 0
+            ) {
+                return res.status(400).json({
+                    message:
+                        "Items are required for item-wise split",
+                });
+            }
+
+            // Get all people involved in the items
+            for (const item of items) {
+
+                let itemUsers = [];
+
+                if (Array.isArray(item.users)) {
+                    itemUsers = item.users;
+                } else if (item.userId) {
+                    itemUsers = [item.userId];
+                }
+
+                for (const user of itemUsers) {
+
+                    const id = Number(
+                        typeof user === "object"
+                            ? user.id
+                            : user
+                    );
+
+                    if (
+                        id &&
+                        !includedUsers.includes(id)
+                    ) {
+                        includedUsers.push(id);
+                    }
+                }
+            }
+
+            if (includedUsers.length === 0) {
+                return res.status(400).json({
+                    message:
+                        "Please assign items to at least one person",
+                });
+            }
+        }
+
+        // ========================================================
+        // CHECK ALL INCLUDED USERS ARE GROUP MEMBERS
+        // ========================================================
+
+        const memberResult = await pool.query(
+            `SELECT user_id
+             FROM group_members
+             WHERE group_id = $1
+               AND user_id = ANY($2::int[])`,
+            [
+                groupId,
+                includedUsers,
+            ]
+        );
+
+        const validMemberIds =
+            memberResult.rows.map(
+                (row) => Number(row.user_id)
+            );
+
+        const invalidUsers =
+            includedUsers.filter(
+                (id) =>
+                    !validMemberIds.includes(id)
+            );
+
+        if (invalidUsers.length > 0) {
+            return res.status(400).json({
+                message:
+                    "One or more selected users are not group members",
+            });
+        }
+
+        // ========================================================
+        // CALCULATE SHARES
+        // ========================================================
 
         let shares = {};
 
-        // Equal split
+        // ========================================================
+        // EQUAL SPLIT
+        // ========================================================
+
         if (splitType === "equal") {
 
-            if (!users || users.length === 0) {
-                return res.status(400).json({
-                    message: "Users are required for equal split",
-                });
-            }
-
-            const result = calculateEqualSplitForUsers(
-                Number(amount),
-                users
-            );
+            const result =
+                calculateEqualSplitForUsers(
+                    Number(amount),
+                    includedUsers
+                );
 
             for (const share of result) {
-                shares[share.userId] = share.amount;
+
+                shares[share.userId] =
+                    Number(
+                        share.amount.toFixed(2)
+                    );
             }
         }
 
-        // Item-wise split
+        // ========================================================
+        // ITEM-WISE SPLIT
+        // ========================================================
+
         else if (splitType === "item") {
 
-            if (!items || items.length === 0) {
+            // -----------------------------------------------
+            // Calculate item subtotal
+            // -----------------------------------------------
+
+            const itemShares =
+                calculateItemSplit(items);
+
+            const itemSubtotal =
+                Object.values(itemShares).reduce(
+                    (sum, value) =>
+                        sum + Number(value),
+                    0
+                );
+
+            if (itemSubtotal <= 0) {
                 return res.status(400).json({
-                    message: "Items are required for item-wise split",
+                    message:
+                        "Item subtotal must be greater than zero",
                 });
             }
 
-            shares = calculateItemSplit(items);
+            // -----------------------------------------------
+            // Distribute final receipt total proportionally
+            //
+            // Example:
+            //
+            // Items = ₹1340
+            // Tax   = ₹67
+            // Total = ₹1407
+            //
+            // Tax is distributed according to
+            // each person's item share.
+            // -----------------------------------------------
+
+            const actualTotal =
+                Number(amount);
+
+            for (
+                const userId in itemShares
+            ) {
+
+                const userItemShare =
+                    Number(
+                        itemShares[userId]
+                    );
+
+                const proportion =
+                    userItemShare /
+                    itemSubtotal;
+
+                shares[userId] =
+                    Number(
+                        (
+                            actualTotal *
+                            proportion
+                        ).toFixed(2)
+                    );
+            }
+
+            // -----------------------------------------------
+            // Fix rounding difference
+            // -----------------------------------------------
+
+            const calculatedTotal =
+                Object.values(shares).reduce(
+                    (sum, value) =>
+                        sum + Number(value),
+                    0
+                );
+
+            const roundingDifference =
+                Number(
+                    (
+                        actualTotal -
+                        calculatedTotal
+                    ).toFixed(2)
+                );
+
+            if (
+                Math.abs(
+                    roundingDifference
+                ) >= 0.01
+            ) {
+
+                const firstUserId =
+                    Object.keys(shares)[0];
+
+                shares[firstUserId] =
+                    Number(
+                        (
+                            shares[firstUserId] +
+                            roundingDifference
+                        ).toFixed(2)
+                    );
+            }
         }
 
+        // ========================================================
+        // INVALID SPLIT
+        // ========================================================
+
         else {
+
             return res.status(400).json({
-                message: "Invalid split type",
+                message:
+                    "Invalid split type",
             });
         }
 
-        // Save shares
-        for (const userId in shares) {
+        // ========================================================
+        // CREATE EXPENSE
+        // ========================================================
+        //
+        // IMPORTANT:
+        //
+        // created_by now represents the PERSON WHO PAID.
+        //
+        // This fixes the problem where Claire was always
+        // shown as payer.
+        //
+        // The logged-in admin can choose another group member
+        // as payer using payerId.
+        //
+        // ========================================================
+
+        const expenseResult =
+            await pool.query(
+                `INSERT INTO expenses
+                    (group_id, created_by, total, description)
+                 VALUES ($1, $2, $3, $4)
+                 RETURNING *`,
+                [
+                    groupId,
+                    actualPayerId,
+                    Number(amount),
+                    description,
+                ]
+            );
+
+        const expense =
+            expenseResult.rows[0];
+
+        // ========================================================
+        // SAVE EXPENSE SHARES
+        // ========================================================
+
+        for (
+            const userId in shares
+        ) {
 
             await pool.query(
                 `INSERT INTO expense_shares
@@ -112,16 +412,33 @@ const createExpense = async (req, res) => {
                  VALUES ($1, $2, $3)`,
                 [
                     expense.id,
-                    userId,
-                    shares[userId],
+                    Number(userId),
+                    Number(
+                        shares[userId]
+                    ),
                 ]
             );
         }
 
+        // ========================================================
+        // RESPONSE
+        // ========================================================
+
         res.status(201).json({
-            message: "Expense created successfully",
+
+            message:
+                "Expense created successfully",
+
             expense,
+
+            payerId:
+                actualPayerId,
+
+            payerName:
+                payerCheck.rows[0].name,
+
             shares,
+
         });
 
     } catch (error) {
@@ -132,143 +449,169 @@ const createExpense = async (req, res) => {
         );
 
         res.status(500).json({
-            message: "Failed to create expense",
-            error: error.message,
+            message:
+                "Failed to create expense",
+            error:
+                error.message,
         });
     }
 };
 
 
-// =========================
+// ============================================================
 // GET GROUP BALANCES
-// =========================
+// ============================================================
 
-const getGroupBalances = async (req, res) => {
+const getGroupBalances = async (
+    req,
+    res
+) => {
+
     try {
 
-        const { groupId } = req.params;
+        const { groupId } =
+            req.params;
 
-        // =================================================
-        // CHECK IF GROUP HAS BEEN SETTLED
-        // =================================================
+        // ========================================================
+        // GET EXPENSES
+        // ========================================================
 
-        const settlementCheck = await pool.query(
-            `SELECT id
-             FROM settlements
-             WHERE group_id = $1
-               AND settled = true
-             LIMIT 1`,
-            [groupId]
-        );
-
-        // =================================================
-        // IF GROUP IS SETTLED
-        // EVERYONE'S BALANCE = 0
-        // =================================================
-
-        if (settlementCheck.rows.length > 0) {
-
-            const membersResult = await pool.query(
-                `SELECT user_id
-                 FROM group_members
+        const expenseResult =
+            await pool.query(
+                `SELECT
+                    id,
+                    created_by,
+                    total
+                 FROM expenses
                  WHERE group_id = $1`,
                 [groupId]
             );
 
-            const balances = {};
+        // ========================================================
+        // GET SHARES
+        // ========================================================
 
-            for (const member of membersResult.rows) {
-                balances[member.user_id] = 0;
-            }
-
-            return res.status(200).json({
-                groupId,
-                balances,
-            });
-        }
-
-        // =================================================
-        // GROUP NOT SETTLED
-        // CALCULATE NORMAL BALANCES
-        // =================================================
-
-        const expenseResult = await pool.query(
-            `SELECT
-                id,
-                created_by,
-                total
-             FROM expenses
-             WHERE group_id = $1`,
-            [groupId]
-        );
-
-        const shareResult = await pool.query(
-            `SELECT
-                es.expense_id,
-                es.user_id,
-                es.amount
-             FROM expense_shares es
-             INNER JOIN expenses e
-                ON es.expense_id = e.id
-             WHERE e.group_id = $1`,
-            [groupId]
-        );
+        const shareResult =
+            await pool.query(
+                `SELECT
+                    es.expense_id,
+                    es.user_id,
+                    es.amount
+                 FROM expense_shares es
+                 INNER JOIN expenses e
+                    ON es.expense_id = e.id
+                 WHERE e.group_id = $1`,
+                [groupId]
+            );
 
         const shares = {};
         const payments = {};
 
-        // =================================================
-        // CALCULATE OWED AMOUNTS
-        // =================================================
+        // ========================================================
+        // HOW MUCH EACH PERSON OWES
+        // ========================================================
 
-        for (const row of shareResult.rows) {
+        for (
+            const row of shareResult.rows
+        ) {
 
-            if (!shares[row.user_id]) {
-                shares[row.user_id] = 0;
+            const userId =
+                Number(row.user_id);
+
+            if (!shares[userId]) {
+                shares[userId] = 0;
             }
 
-            shares[row.user_id] += Number(row.amount);
+            shares[userId] =
+                Number(
+                    (
+                        shares[userId] +
+                        Number(row.amount)
+                    ).toFixed(2)
+                );
         }
 
-        // =================================================
-        // CALCULATE PAID AMOUNTS
-        // =================================================
+        // ========================================================
+        // HOW MUCH EACH PERSON PAID
+        // ========================================================
 
-        for (const expense of expenseResult.rows) {
+        for (
+            const expense
+            of expenseResult.rows
+        ) {
 
-            if (!payments[expense.created_by]) {
-                payments[expense.created_by] = 0;
+            const payerId =
+                Number(
+                    expense.created_by
+                );
+
+            if (!payments[payerId]) {
+                payments[payerId] = 0;
             }
 
-            payments[expense.created_by] += Number(
-                expense.total
-            );
+            payments[payerId] =
+                Number(
+                    (
+                        payments[payerId] +
+                        Number(expense.total)
+                    ).toFixed(2)
+                );
         }
 
-        // =================================================
-        // CALCULATE BALANCES
-        // =================================================
+        // ========================================================
+        // BALANCE
+        // ========================================================
+        //
+        // Positive = gets money back
+        // Negative = owes money
+        //
+        // Example:
+        //
+        // Claire paid ₹1407
+        // Claire owes ₹703.50
+        //
+        // Claire balance:
+        //
+        // 1407 - 703.50
+        // = +703.50
+        //
+        // Thebear:
+        //
+        // 0 - 703.50
+        // = -703.50
+        //
+        // ========================================================
 
         const balances = {};
 
-        const userIds = new Set([
-            ...Object.keys(shares),
-            ...Object.keys(payments),
-        ]);
+        const userIds =
+            new Set([
+                ...Object.keys(shares),
+                ...Object.keys(payments),
+            ]);
 
-        for (const userId of userIds) {
+        for (
+            const userId of userIds
+        ) {
 
-            const paid = payments[userId] || 0;
-            const owed = shares[userId] || 0;
+            const paid =
+                payments[userId] || 0;
 
-            balances[userId] = Number(
-                (paid - owed).toFixed(2)
-            );
+            const owed =
+                shares[userId] || 0;
+
+            balances[userId] =
+                Number(
+                    (
+                        paid -
+                        owed
+                    ).toFixed(2)
+                );
         }
 
-        // =================================================
+        // ========================================================
         // RESPONSE
-        // =================================================
+        // ========================================================
 
         res.status(200).json({
             groupId,
@@ -283,58 +626,90 @@ const getGroupBalances = async (req, res) => {
         );
 
         res.status(500).json({
-            message: "Failed to calculate balances",
-            error: error.message,
+            message:
+                "Failed to calculate balances",
+            error:
+                error.message,
         });
     }
 };
 
 
-// =========================
+// ============================================================
 // GET GROUP EXPENSES
-// =========================
+// ============================================================
 
-const getGroupExpenses = async (req, res) => {
+const getGroupExpenses = async (
+    req,
+    res
+) => {
+
     try {
 
-        const { groupId } = req.params;
-        const userId = req.user.id;
+        const { groupId } =
+            req.params;
 
-        // Check group membership
-        const memberCheck = await pool.query(
-            `SELECT id
-             FROM group_members
-             WHERE group_id = $1
-               AND user_id = $2`,
-            [groupId, userId]
-        );
+        const userId =
+            req.user.id;
 
-        if (memberCheck.rows.length === 0) {
+        // ========================================================
+        // CHECK MEMBERSHIP
+        // ========================================================
+
+        const memberCheck =
+            await pool.query(
+                `SELECT id
+                 FROM group_members
+                 WHERE group_id = $1
+                   AND user_id = $2`,
+                [
+                    groupId,
+                    userId,
+                ]
+            );
+
+        if (
+            memberCheck.rows.length === 0
+        ) {
+
             return res.status(403).json({
-                message: "You are not a member of this group",
+                message:
+                    "You are not a member of this group",
             });
         }
 
-        // Get expenses
-        const expenseResult = await pool.query(
-            `SELECT
-                e.id,
-                e.description,
-                e.total,
-                e.created_at,
-                e.created_by,
-                u.name AS created_by_name
-             FROM expenses e
-             JOIN users u
-                ON e.created_by = u.id
-             WHERE e.group_id = $1
-             ORDER BY e.created_at DESC`,
-            [groupId]
-        );
+        // ========================================================
+        // GET EXPENSES + PAYER
+        // ========================================================
+
+        const expenseResult =
+            await pool.query(
+                `SELECT
+                    e.id,
+                    e.description,
+                    e.total,
+                    e.created_at,
+                    e.created_by,
+                    u.name AS created_by_name
+                 FROM expenses e
+                 JOIN users u
+                    ON e.created_by = u.id
+                 WHERE e.group_id = $1
+                 ORDER BY e.created_at DESC`,
+                [groupId]
+            );
+
+        // ========================================================
+        // RESPONSE
+        // ========================================================
 
         res.status(200).json({
+
             groupId,
-            expenses: expenseResult.rows,
+
+            expenses:
+                expenseResult.rows,
+
         });
 
     } catch (error) {
@@ -345,16 +720,18 @@ const getGroupExpenses = async (req, res) => {
         );
 
         res.status(500).json({
-            message: "Failed to fetch expenses",
-            error: error.message,
+            message:
+                "Failed to fetch expenses",
+            error:
+                error.message,
         });
     }
 };
 
 
-// =========================
+// ============================================================
 // EXPORTS
-// =========================
+// ============================================================
 
 module.exports = {
     createExpense,

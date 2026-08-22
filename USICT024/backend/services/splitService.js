@@ -1,3 +1,7 @@
+// =========================
+// EQUAL SPLIT
+// =========================
+
 const calculateEqualSplit = (total, numberOfPeople) => {
     if (numberOfPeople <= 0) {
         throw new Error("Number of people must be greater than 0");
@@ -7,12 +11,14 @@ const calculateEqualSplit = (total, numberOfPeople) => {
         throw new Error("Total cannot be negative");
     }
 
-    const amountPerPerson = total / numberOfPeople;
+    const amountPerPerson = Number(
+        (Number(total) / numberOfPeople).toFixed(2)
+    );
 
     return {
-        total,
+        total: Number(total),
         numberOfPeople,
-        amountPerPerson: Number(amountPerPerson.toFixed(2)),
+        amountPerPerson,
     };
 };
 
@@ -30,17 +36,17 @@ const calculateEqualSplitForUsers = (total, users) => {
         throw new Error("Total cannot be negative");
     }
 
-    const amountPerPerson = Number(
-        (Number(total) / users.length).toFixed(2)
-    );
+    const totalAmount = Number(total);
 
-    return users.map((user) => {
+    const baseAmount = Math.floor(
+        (totalAmount / users.length) * 100
+    ) / 100;
 
-        // Frontend currently sends:
-        // [1, 2, 3]
+    const shares = [];
 
-        // But also support:
-        // [{ id: 1 }, { id: 2 }, { id: 3 }]
+    let assignedTotal = 0;
+
+    users.forEach((user, index) => {
 
         const userId =
             typeof user === "object"
@@ -51,11 +57,28 @@ const calculateEqualSplitForUsers = (total, users) => {
             throw new Error("Invalid user ID in equal split");
         }
 
-        return {
+        let amount = baseAmount;
+
+        // Give rounding remainder to last user
+        if (index === users.length - 1) {
+            amount = Number(
+                (totalAmount - assignedTotal).toFixed(2)
+            );
+        }
+
+        amount = Number(amount.toFixed(2));
+
+        assignedTotal = Number(
+            (assignedTotal + amount).toFixed(2)
+        );
+
+        shares.push({
             userId: Number(userId),
-            amount: amountPerPerson,
-        };
+            amount,
+        });
     });
+
+    return shares;
 };
 
 
@@ -64,6 +87,7 @@ const calculateEqualSplitForUsers = (total, users) => {
 // =========================
 
 const calculateItemSplit = (items) => {
+
     const userTotals = {};
 
     if (!items || items.length === 0) {
@@ -71,26 +95,6 @@ const calculateItemSplit = (items) => {
     }
 
     for (const item of items) {
-
-        /*
-         * Frontend sends:
-         *
-         * {
-         *   name: "Pizza",
-         *   price: 450,
-         *   userId: 1
-         * }
-         *
-         * Backend originally expected:
-         *
-         * {
-         *   name: "Pizza",
-         *   price: 450,
-         *   users: [1]
-         * }
-         *
-         * Support both formats.
-         */
 
         let assignedUsers = [];
 
@@ -106,11 +110,22 @@ const calculateItemSplit = (items) => {
             );
         }
 
-        const share = Number(
-            (Number(item.price) / assignedUsers.length).toFixed(2)
-        );
+        const price = Number(item.price);
 
-        for (const user of assignedUsers) {
+        if (Number.isNaN(price) || price < 0) {
+            throw new Error(
+                `Invalid price for ${item.name}`
+            );
+        }
+
+        const baseShare =
+            Math.floor(
+                (price / assignedUsers.length) * 100
+            ) / 100;
+
+        let assignedTotal = 0;
+
+        assignedUsers.forEach((user, index) => {
 
             const userId =
                 typeof user === "object"
@@ -123,6 +138,21 @@ const calculateItemSplit = (items) => {
                 );
             }
 
+            let share = baseShare;
+
+            // Give rounding remainder to last user
+            if (index === assignedUsers.length - 1) {
+                share = Number(
+                    (price - assignedTotal).toFixed(2)
+                );
+            }
+
+            share = Number(share.toFixed(2));
+
+            assignedTotal = Number(
+                (assignedTotal + share).toFixed(2)
+            );
+
             if (!userTotals[userId]) {
                 userTotals[userId] = 0;
             }
@@ -130,7 +160,7 @@ const calculateItemSplit = (items) => {
             userTotals[userId] = Number(
                 (userTotals[userId] + share).toFixed(2)
             );
-        }
+        });
     }
 
     return userTotals;
@@ -142,11 +172,24 @@ const calculateItemSplit = (items) => {
 // =========================
 
 const calculateBalances = (shares, payments) => {
+
     const balances = {};
 
-    for (const userId in shares) {
-        const paid = payments[userId] || 0;
-        const owed = shares[userId] || 0;
+    // Include EVERY user who either paid OR owes
+    const userIds = new Set([
+        ...Object.keys(shares || {}),
+        ...Object.keys(payments || {}),
+    ]);
+
+    for (const userId of userIds) {
+
+        const paid = Number(
+            payments[userId] || 0
+        );
+
+        const owed = Number(
+            shares[userId] || 0
+        );
 
         balances[userId] = Number(
             (paid - owed).toFixed(2)
@@ -162,21 +205,32 @@ const calculateBalances = (shares, payments) => {
 // =========================
 
 const calculateSettlements = (balances) => {
+
     const creditors = [];
     const debtors = [];
 
     for (const userId in balances) {
-        const balance = balances[userId];
 
-        if (balance > 0) {
+        const balance = Number(
+            balances[userId]
+        );
+
+        if (balance > 0.01) {
+
             creditors.push({
-                userId,
-                amount: balance,
+                userId: String(userId),
+                amount: Number(
+                    balance.toFixed(2)
+                ),
             });
-        } else if (balance < 0) {
+
+        } else if (balance < -0.01) {
+
             debtors.push({
-                userId,
-                amount: Math.abs(balance),
+                userId: String(userId),
+                amount: Number(
+                    Math.abs(balance).toFixed(2)
+                ),
             });
         }
     }
@@ -190,8 +244,12 @@ const calculateSettlements = (balances) => {
         creditorIndex < creditors.length &&
         debtorIndex < debtors.length
     ) {
-        const creditor = creditors[creditorIndex];
-        const debtor = debtors[debtorIndex];
+
+        const creditor =
+            creditors[creditorIndex];
+
+        const debtor =
+            debtors[debtorIndex];
 
         const amount = Number(
             Math.min(
@@ -200,9 +258,13 @@ const calculateSettlements = (balances) => {
             ).toFixed(2)
         );
 
+        if (amount <= 0) {
+            break;
+        }
+
         settlements.push({
-            from: debtor.userId,
-            to: creditor.userId,
+            from: Number(debtor.userId),
+            to: Number(creditor.userId),
             amount,
         });
 
@@ -214,11 +276,13 @@ const calculateSettlements = (balances) => {
             (debtor.amount - amount).toFixed(2)
         );
 
-        if (creditor.amount === 0) {
+        if (Math.abs(creditor.amount) < 0.01) {
+            creditor.amount = 0;
             creditorIndex++;
         }
 
-        if (debtor.amount === 0) {
+        if (Math.abs(debtor.amount) < 0.01) {
+            debtor.amount = 0;
             debtorIndex++;
         }
     }
@@ -238,4 +302,3 @@ module.exports = {
     calculateBalances,
     calculateSettlements,
 };
-
