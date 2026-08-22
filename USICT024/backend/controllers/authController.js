@@ -16,7 +16,6 @@ const signup = async (req, res) => {
             });
         }
 
-        // Check if user already exists
         const existingUser = await pool.query(
             "SELECT id FROM users WHERE email = $1",
             [email]
@@ -28,10 +27,8 @@ const signup = async (req, res) => {
             });
         }
 
-        // Hash password
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        // Create user
         const result = await pool.query(
             `INSERT INTO users (name, email, password)
              VALUES ($1, $2, $3)
@@ -68,7 +65,6 @@ const login = async (req, res) => {
             });
         }
 
-        // Find user
         const result = await pool.query(
             "SELECT * FROM users WHERE email = $1",
             [email]
@@ -82,7 +78,6 @@ const login = async (req, res) => {
 
         const user = result.rows[0];
 
-        // Check password
         const isMatch = await bcrypt.compare(password, user.password);
 
         if (!isMatch) {
@@ -91,11 +86,15 @@ const login = async (req, res) => {
             });
         }
 
-        // Create JWT
         const token = jwt.sign(
-            { id: user.id, email: user.email },
+            {
+                id: user.id,
+                email: user.email
+            },
             process.env.JWT_SECRET,
-            { expiresIn: "7d" }
+            {
+                expiresIn: "7d"
+            }
         );
 
         res.status(200).json({
@@ -118,7 +117,160 @@ const login = async (req, res) => {
     }
 };
 
+// -------------------------
+// Delete Account
+// -------------------------
+
+const deleteAccount = async (req, res) => {
+    const client = await pool.connect();
+
+    try {
+        const userId = req.user.id;
+
+        await client.query("BEGIN");
+
+        // 1. Delete settlements involving this user
+        await client.query(
+            `DELETE FROM settlements
+             WHERE payer_id = $1 OR receiver_id = $1`,
+            [userId]
+        );
+
+        // 2. Delete expense shares of this user
+        await client.query(
+            `DELETE FROM expense_shares
+             WHERE user_id = $1`,
+            [userId]
+        );
+
+        // 3. Delete expenses created by this user
+        //    First delete their settlements/shares
+        const expenses = await client.query(
+            `SELECT id
+             FROM expenses
+             WHERE created_by = $1`,
+            [userId]
+        );
+
+        for (const expense of expenses.rows) {
+            await client.query(
+                `DELETE FROM settlements
+                 WHERE expense_id = $1`,
+                [expense.id]
+            );
+
+            await client.query(
+                `DELETE FROM expense_shares
+                 WHERE expense_id = $1`,
+                [expense.id]
+            );
+        }
+
+        await client.query(
+            `DELETE FROM expenses
+             WHERE created_by = $1`,
+            [userId]
+        );
+
+        // 4. Delete receipts belonging to this user
+        await client.query(
+            `DELETE FROM receipts
+             WHERE user_id = $1`,
+            [userId]
+        );
+
+        // 5. Delete user's group memberships
+        await client.query(
+            `DELETE FROM group_members
+             WHERE user_id = $1`,
+            [userId]
+        );
+
+        // 6. Delete groups created by this user
+        //    Delete their remaining members first
+        const groups = await client.query(
+            `SELECT id
+             FROM groups
+             WHERE created_by = $1`,
+            [userId]
+        );
+
+        for (const group of groups.rows) {
+
+            // Delete expenses inside the group
+            const groupExpenses = await client.query(
+                `SELECT id
+                 FROM expenses
+                 WHERE group_id = $1`,
+                [group.id]
+            );
+
+            for (const expense of groupExpenses.rows) {
+
+                await client.query(
+                    `DELETE FROM settlements
+                     WHERE expense_id = $1`,
+                    [expense.id]
+                );
+
+                await client.query(
+                    `DELETE FROM expense_shares
+                     WHERE expense_id = $1`,
+                    [expense.id]
+                );
+            }
+
+            await client.query(
+                `DELETE FROM expenses
+                 WHERE group_id = $1`,
+                [group.id]
+            );
+
+            await client.query(
+                `DELETE FROM group_members
+                 WHERE group_id = $1`,
+                [group.id]
+            );
+        }
+
+        // Delete groups created by user
+        await client.query(
+            `DELETE FROM groups
+             WHERE created_by = $1`,
+            [userId]
+        );
+
+        // 7. Finally delete the user
+        await client.query(
+            `DELETE FROM users
+             WHERE id = $1`,
+            [userId]
+        );
+
+        await client.query("COMMIT");
+
+        res.status(200).json({
+            message: "Account deleted successfully"
+        });
+
+    } catch (error) {
+
+        await client.query("ROLLBACK");
+
+        console.error("Delete account error:", error);
+
+        res.status(500).json({
+            message: "Failed to delete account",
+            error: error.message
+        });
+
+    } finally {
+        client.release();
+    }
+};
+
 module.exports = {
     signup,
     login,
+    deleteAccount,
 };

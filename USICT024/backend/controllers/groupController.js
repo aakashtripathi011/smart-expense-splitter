@@ -14,7 +14,7 @@ const createGroup = async (req, res) => {
 
     if (!name) {
       return res.status(400).json({
-        message: "Group name is required"
+        message: "Group name is required",
       });
     }
 
@@ -49,14 +49,13 @@ const createGroup = async (req, res) => {
 
     res.status(201).json({
       message: "Group created successfully",
-      group
+      group,
     });
-
   } catch (error) {
     console.error("Create group error:", error);
 
     res.status(500).json({
-      message: "Failed to create group"
+      message: "Failed to create group",
     });
   }
 };
@@ -68,7 +67,7 @@ const joinGroup = async (req, res) => {
 
     if (!code) {
       return res.status(400).json({
-        message: "Group code is required"
+        message: "Group code is required",
       });
     }
 
@@ -79,7 +78,7 @@ const joinGroup = async (req, res) => {
 
     if (groupResult.rows.length === 0) {
       return res.status(404).json({
-        message: "Group not found"
+        message: "Group not found",
       });
     }
 
@@ -94,7 +93,7 @@ const joinGroup = async (req, res) => {
 
     if (memberResult.rows.length > 0) {
       return res.status(400).json({
-        message: "You are already a member of this group"
+        message: "You are already a member of this group",
       });
     }
 
@@ -106,14 +105,13 @@ const joinGroup = async (req, res) => {
 
     res.status(200).json({
       message: "Joined group successfully",
-      group
+      group,
     });
-
   } catch (error) {
     console.error("Join group error:", error);
 
     res.status(500).json({
-      message: "Failed to join group"
+      message: "Failed to join group",
     });
   }
 };
@@ -128,7 +126,12 @@ const getMyGroups = async (req, res) => {
         g.name,
         g.code,
         g.created_by,
-        g.created_at
+        g.created_at,
+        (
+          SELECT COUNT(*)
+          FROM group_members gm2
+          WHERE gm2.group_id = g.id
+        ) AS member_count
        FROM groups g
        INNER JOIN group_members gm
          ON g.id = gm.group_id
@@ -138,14 +141,13 @@ const getMyGroups = async (req, res) => {
     );
 
     res.status(200).json({
-      groups: result.rows
+      groups: result.rows,
     });
-
   } catch (error) {
     console.error("Get groups error:", error);
 
     res.status(500).json({
-      message: "Failed to fetch groups"
+      message: "Failed to fetch groups",
     });
   }
 };
@@ -155,7 +157,11 @@ const getGroupMembers = async (req, res) => {
     const { groupId } = req.params;
     const userId = req.user.id;
 
-    // Check whether current user belongs to this group
+     console.log("========== GET GROUP MEMBERS ==========");
+    console.log("GROUP ID:", groupId);
+    console.log("REQ.USER:", req.user);
+    console.log("USER ID:", userId);
+
     const memberCheck = await pool.query(
       `SELECT id
        FROM group_members
@@ -165,7 +171,7 @@ const getGroupMembers = async (req, res) => {
 
     if (memberCheck.rows.length === 0) {
       return res.status(403).json({
-        message: "You are not a member of this group"
+        message: "You are not a member of this group",
       });
     }
 
@@ -184,21 +190,122 @@ const getGroupMembers = async (req, res) => {
     );
 
     res.status(200).json({
-      members: result.rows
+      members: result.rows,
     });
-
   } catch (error) {
     console.error("Get members error:", error);
 
     res.status(500).json({
-      message: "Failed to fetch group members"
+      message: "Failed to fetch group members",
     });
   }
 };
+
+
+// =====================================
+// DELETE GROUP
+// =====================================
+
+const deleteGroup = async (req, res) => {
+  const client = await pool.connect();
+
+  try {
+    const { groupId } = req.params;
+    const userId = req.user.id;
+
+    await client.query("BEGIN");
+
+    // Only the group creator can delete the group
+    const groupResult = await client.query(
+      `SELECT id
+       FROM groups
+       WHERE id = $1 AND created_by = $2`,
+      [groupId, userId]
+    );
+
+    if (groupResult.rows.length === 0) {
+      await client.query("ROLLBACK");
+
+      return res.status(403).json({
+        message: "Only the group creator can delete this group",
+      });
+    }
+
+    // Get all expenses in this group
+    const expenseResult = await client.query(
+      `SELECT id
+       FROM expenses
+       WHERE group_id = $1`,
+      [groupId]
+    );
+
+    const expenseIds = expenseResult.rows.map(
+      (row) => row.id
+    );
+
+    // Delete settlements connected to these expenses
+    if (expenseIds.length > 0) {
+      await client.query(
+        `DELETE FROM settlements
+         WHERE expense_id = ANY($1::int[])`,
+        [expenseIds]
+      );
+
+      // Delete expense shares
+      await client.query(
+        `DELETE FROM expense_shares
+         WHERE expense_id = ANY($1::int[])`,
+        [expenseIds]
+      );
+
+      // Delete expenses
+      await client.query(
+        `DELETE FROM expenses
+         WHERE id = ANY($1::int[])`,
+        [expenseIds]
+      );
+    }
+
+    // Delete group members
+    await client.query(
+      `DELETE FROM group_members
+       WHERE group_id = $1`,
+      [groupId]
+    );
+
+    // Delete group
+    await client.query(
+      `DELETE FROM groups
+       WHERE id = $1`,
+      [groupId]
+    );
+
+    await client.query("COMMIT");
+
+    res.status(200).json({
+      message: "Group deleted successfully",
+    });
+
+  } catch (error) {
+    await client.query("ROLLBACK");
+
+    console.error("Delete group error:", error);
+
+    res.status(500).json({
+      message: "Failed to delete group",
+      error: error.message,
+    });
+
+  } finally {
+    client.release();
+  }
+};
+
 
 module.exports = {
   createGroup,
   joinGroup,
   getMyGroups,
-  getGroupMembers
+  getGroupMembers,
+  deleteGroup,
 };

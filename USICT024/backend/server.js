@@ -5,6 +5,8 @@ const authRoutes = require("./routes/authRoutes");
 const verifyToken = require("./middleware/authMiddleware");
 const cors = require("cors");
 const groupRoutes = require("./routes/groupRoutes");
+const expenseRoutes = require("./routes/expenseRoutes");
+const settlementRoutes = require("./routes/settlementRoutes");
 
 const app = express();
 
@@ -17,6 +19,8 @@ app.use(cors({
 app.use("/api/receipts", receiptRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/groups", groupRoutes);
+app.use("/api/expenses", expenseRoutes);
+app.use("/api/settlements", settlementRoutes);
 
 app.get("/", (req, res) => {
     res.send("Smart Expense Splitter API is running");

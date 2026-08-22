@@ -17,8 +17,12 @@ const calculateEqualSplit = (total, numberOfPeople) => {
 };
 
 
+// =========================
+// EQUAL SPLIT FOR USERS
+// =========================
+
 const calculateEqualSplitForUsers = (total, users) => {
-    if (users.length === 0) {
+    if (!users || users.length === 0) {
         throw new Error("At least one user is required");
     }
 
@@ -27,43 +31,119 @@ const calculateEqualSplitForUsers = (total, users) => {
     }
 
     const amountPerPerson = Number(
-        (total / users.length).toFixed(2)
+        (Number(total) / users.length).toFixed(2)
     );
 
-    return users.map((user) => ({
-        userId: user.id,
-        amount: amountPerPerson,
-    }));
+    return users.map((user) => {
+
+        // Frontend currently sends:
+        // [1, 2, 3]
+
+        // But also support:
+        // [{ id: 1 }, { id: 2 }, { id: 3 }]
+
+        const userId =
+            typeof user === "object"
+                ? user.id
+                : user;
+
+        if (!userId) {
+            throw new Error("Invalid user ID in equal split");
+        }
+
+        return {
+            userId: Number(userId),
+            amount: amountPerPerson,
+        };
+    });
 };
+
+
+// =========================
+// ITEM-WISE SPLIT
+// =========================
 
 const calculateItemSplit = (items) => {
     const userTotals = {};
 
+    if (!items || items.length === 0) {
+        throw new Error("At least one item is required");
+    }
+
     for (const item of items) {
-        if (!item.users || item.users.length === 0) {
-            throw new Error(`No users assigned to ${item.name}`);
+
+        /*
+         * Frontend sends:
+         *
+         * {
+         *   name: "Pizza",
+         *   price: 450,
+         *   userId: 1
+         * }
+         *
+         * Backend originally expected:
+         *
+         * {
+         *   name: "Pizza",
+         *   price: 450,
+         *   users: [1]
+         * }
+         *
+         * Support both formats.
+         */
+
+        let assignedUsers = [];
+
+        if (Array.isArray(item.users)) {
+            assignedUsers = item.users;
+        } else if (item.userId) {
+            assignedUsers = [item.userId];
+        }
+
+        if (assignedUsers.length === 0) {
+            throw new Error(
+                `No users assigned to ${item.name}`
+            );
         }
 
         const share = Number(
-            (item.price / item.users.length).toFixed(2)
+            (Number(item.price) / assignedUsers.length).toFixed(2)
         );
 
-        for (const userId of item.users) {
+        for (const user of assignedUsers) {
+
+            const userId =
+                typeof user === "object"
+                    ? user.id
+                    : user;
+
+            if (!userId) {
+                throw new Error(
+                    `Invalid user assigned to ${item.name}`
+                );
+            }
+
             if (!userTotals[userId]) {
                 userTotals[userId] = 0;
             }
 
-            userTotals[userId] += share;
+            userTotals[userId] = Number(
+                (userTotals[userId] + share).toFixed(2)
+            );
         }
     }
 
     return userTotals;
 };
 
+
+// =========================
+// CALCULATE BALANCES
+// =========================
+
 const calculateBalances = (shares, payments) => {
     const balances = {};
 
-    // Calculate balance for every user
     for (const userId in shares) {
         const paid = payments[userId] || 0;
         const owed = shares[userId] || 0;
@@ -75,6 +155,11 @@ const calculateBalances = (shares, payments) => {
 
     return balances;
 };
+
+
+// =========================
+// CALCULATE SETTLEMENTS
+// =========================
 
 const calculateSettlements = (balances) => {
     const creditors = [];
@@ -142,7 +227,9 @@ const calculateSettlements = (balances) => {
 };
 
 
-
+// =========================
+// EXPORTS
+// =========================
 
 module.exports = {
     calculateEqualSplit,
@@ -151,3 +238,4 @@ module.exports = {
     calculateBalances,
     calculateSettlements,
 };
+

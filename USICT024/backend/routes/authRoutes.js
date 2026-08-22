@@ -5,12 +5,19 @@ const router = express.Router();
 const {
     signup,
     login,
+    deleteAccount
 } = require("../controllers/authController");
 
-// Signup
+const verifyToken = require("../middleware/authMiddleware");
+
 router.post("/signup", signup);
 
-// Login
 router.post("/login", login);
+
+router.delete(
+    "/delete-account",
+    verifyToken,
+    deleteAccount
+);
 
 module.exports = router;

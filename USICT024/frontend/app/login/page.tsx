@@ -25,9 +25,9 @@ const slides = [
 export default function Login() {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [email, setEmail] = useState("");
-const [password, setPassword] = useState("");
-const [error, setError] = useState("");
-const [loading, setLoading] = useState(false);
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -40,238 +40,477 @@ const [loading, setLoading] = useState(false);
   const slide = slides[currentSlide];
 
   const handleLogin = async (e) => {
-  e.preventDefault();
+    e.preventDefault();
 
-  setError("");
-  setLoading(true);
+    setError("");
+    setLoading(true);
 
-  try {
-    const response = await fetch("http://localhost:5000/api/auth/login", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        email,
-        password,
-      }),
-    });
+    try {
+      const response = await fetch(
+        "http://localhost:5000/api/auth/login",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            email,
+            password,
+          }),
+        }
+      );
 
-    const data = await response.json();
+      const data = await response.json();
 
-    if (!response.ok) {
-      setError(data.message || "Login failed");
-      return;
+      if (!response.ok) {
+        setError(data.message || "Login failed");
+        return;
+      }
+
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("user", JSON.stringify(data.user));
+
+      document.cookie = `token=${data.token}; path=/; max-age=604800; SameSite=Lax`;
+
+      window.location.href = "/dashboard";
+    } catch (error) {
+      setError("Unable to connect to server");
+    } finally {
+      setLoading(false);
     }
-
-    localStorage.setItem("token", data.token);
-    localStorage.setItem("user", JSON.stringify(data.user));
-
-    window.location.href = "/dashboard";
-
-  } catch (error) {
-    setError("Unable to connect to server");
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   return (
-    <main className="min-h-screen bg-[#152238] font-mono text-white">
+    <main className="relative min-h-screen overflow-hidden bg-[#0b192b] font-mono text-[#e8edf2]">
 
-      <div className="flex min-h-screen">
+      {/* PAPER TEXTURE */}
 
-        {/* ================= LEFT CAROUSEL ================= */}
+      <div className="pointer-events-none fixed inset-0 z-50 opacity-[0.035]">
+        <div
+          className="h-full w-full"
+          style={{
+            backgroundImage:
+              "radial-gradient(#d9e5ef 0.7px, transparent 0.7px)",
+            backgroundSize: "6px 6px",
+          }}
+        />
+      </div>
 
-        <div className="hidden w-1/2 items-center justify-center p-6 md:flex">
+      {/* NAVBAR */}
 
-  <div className="relative h-[75vh] w-[90%] overflow-hidden rounded-3xl bg-[#0b192b]">
+      <nav className="relative z-10 mx-auto flex max-w-6xl items-center justify-between px-6 py-7 md:px-10">
 
-    <Image
-      key={slide.image}
-      src={slide.image}
-      alt=""
-      fill
-      priority
-      sizes="45vw"
-      className="object-cover transition-opacity duration-700"
-    />
+        <Link
+          href="/"
+          className="text-2xl font-black tracking-[-0.08em]"
+        >
+          split<span className="text-[#5fa8d3]">.</span>
+        </Link>
 
-  </div>
+        <div className="rotate-[1deg] border border-[#30445a] bg-[#101f32] px-3 py-1.5 text-[10px] uppercase tracking-[0.2em] text-[#718397]">
+          page 02 / login
+        </div>
 
-</div>
+      </nav>
 
+      {/* MAIN */}
 
-        {/* ================= RIGHT LOGIN ================= */}
+      <div className="relative mx-auto flex min-h-[calc(100vh-90px)] max-w-6xl items-center px-6 pb-16 md:px-10">
 
-        <div className="flex w-full items-center justify-center px-6 py-12 md:w-1/2">
+        <div className="grid w-full items-center gap-16 lg:grid-cols-[1.05fr_0.95fr]">
 
-          <div className="w-full max-w-md">
+          {/* LEFT — SCRAPBOOK */}
 
-            {/* MOBILE LOGO */}
+          <div className="relative hidden min-h-[600px] lg:block">
 
-            <div className="mb-12 md:hidden">
+            {/* LABEL */}
 
-              <Link
-                href="/"
-                className="text-xl font-bold"
-              >
-                split<span className="text-blue-400">.</span>
-              </Link>
-
+            <div className="absolute left-4 top-5 z-20 rotate-[-2deg]">
+              <p className="text-[10px] uppercase tracking-[0.25em] text-[#718397]">
+                memories / 01
+              </p>
             </div>
 
+            {/* PHOTO */}
 
-            {/* HEADING */}
+            <div
+              className="
+                absolute
+                left-[8%]
+                top-[13%]
+                h-[420px]
+                w-[430px]
+                rotate-[-2deg]
+                border-[9px]
+                border-[#172a40]
+                bg-[#172a40]
+                shadow-[7px_9px_0px_rgba(0,0,0,0.35)]
+              "
+            >
 
-            <div className="mb-10">
+              {/* TAPE */}
 
-              <p className="mb-3 text-xs uppercase tracking-[0.2em] text-blue-400">
-                welcome back
-              </p>
+              <div
+                className="
+                  absolute
+                  -top-5
+                  left-1/2
+                  z-20
+                  h-9
+                  w-28
+                  -translate-x-1/2
+                  rotate-[2deg]
+                  bg-[#526b80]
+                  opacity-55
+                "
+              />
 
-              <h2 className="text-4xl font-semibold tracking-tight">
-                Log in
-              </h2>
+              <div className="relative h-full w-full overflow-hidden">
 
-              <p className="mt-3 text-sm text-slate-500">
-                Continue where you left off.
-              </p>
-
-            </div>
-
-
-            {/* FORM */}
-
-            <form onSubmit={handleLogin} className="space-y-5">
-
-              {/* EMAIL */}
-
-              <div>
-
-                <label
-                  htmlFor="email"
-                  className="mb-2 block text-sm text-slate-300"
-                >
-                  Email
-                </label>
-
-                <input
-                  id="email"
-                  type="email"
-                  placeholder="you@example.com"
-                  value={email}
-onChange={(e) => setEmail(e.target.value)}
-                  className="w-full rounded-xl border border-slate-800 bg-[#091626] px-4 py-3.5 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
+                <Image
+                  key={slide.image}
+                  src={slide.image}
+                  alt=""
+                  fill
+                  priority
+                  sizes="430px"
+                  className="object-cover transition-opacity duration-700"
                 />
 
               </div>
 
+            </div>
 
-              {/* PASSWORD */}
+            {/* CAPTION */}
 
-              <div>
+            <div className="absolute bottom-[10%] left-[12%] rotate-[-1deg] text-xs leading-5 text-[#718397]">
 
-                <div className="mb-2 flex items-center justify-between">
+              <span className="text-[#aab8c5]">
+                dinner with friends.
+              </span>
+
+              <br />
+
+              <span className="text-[#5fa8d3]">
+                somehow someone still owes money.
+              </span>
+
+            </div>
+
+            {/* SLIDE COUNTER */}
+
+            <div className="absolute bottom-[10%] right-[12%] text-[10px] tracking-widest text-[#627487]">
+              {String(currentSlide + 1).padStart(2, "0")}
+              {" / "}
+              {String(slides.length).padStart(2, "0")}
+            </div>
+
+            {/* HAND-DRAWN ARROW */}
+
+            <div className="absolute right-[4%] top-[14%] rotate-[8deg]">
+
+              <svg
+                width="100"
+                height="70"
+                viewBox="0 0 100 70"
+                fill="none"
+              >
+
+                <path
+                  d="M5 55 C30 15 60 12 90 20"
+                  stroke="#5fa8d3"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                />
+
+                <path
+                  d="M78 12 L92 20 L80 29"
+                  stroke="#5fa8d3"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                />
+
+              </svg>
+
+            </div>
+
+          </div>
+
+          {/* RIGHT — LOGIN */}
+
+          <div className="w-full max-w-md lg:justify-self-end">
+
+            <div
+              className="
+                relative
+                rotate-[0.5deg]
+                border-2
+                border-[#40556b]
+                bg-[#101f32]
+                p-8
+                shadow-[8px_9px_0px_rgba(0,0,0,0.35)]
+                md:p-10
+              "
+            >
+
+              {/* TAPE */}
+
+              <div
+                className="
+                  absolute
+                  -top-4
+                  right-16
+                  h-8
+                  w-24
+                  rotate-[-2deg]
+                  bg-[#526b80]
+                  opacity-50
+                "
+              />
+
+              {/* MOBILE LOGO */}
+
+              <div className="mb-10 md:hidden">
+
+                <Link
+                  href="/"
+                  className="text-xl font-black tracking-[-0.06em]"
+                >
+                  split<span className="text-[#5fa8d3]">.</span>
+                </Link>
+
+              </div>
+
+              {/* HEADING */}
+
+              <div className="mb-9">
+
+                <p className="mb-3 rotate-[-1deg] text-[10px] font-bold uppercase tracking-[0.25em] text-[#5fa8d3]">
+                  welcome back
+                </p>
+
+                <h1 className="text-5xl font-black uppercase tracking-[-0.07em] text-[#e8edf2]">
+                  LOG IN.
+                </h1>
+
+                <p className="mt-4 max-w-xs text-xs leading-5 text-[#718397]">
+                  Continue where you left off.
+                  <br />
+                  Your group is waiting.
+                </p>
+
+              </div>
+
+              {/* FORM */}
+
+              <form
+                onSubmit={handleLogin}
+                className="space-y-6"
+              >
+
+                {/* EMAIL */}
+
+                <div>
 
                   <label
-                    htmlFor="password"
-                    className="text-sm text-slate-300"
+                    htmlFor="email"
+                    className="mb-2 block text-[11px] font-bold uppercase tracking-wider text-[#c2cfda]"
                   >
-                    Password
+                    Email
                   </label>
 
-                  <button
-                    type="button"
-                    
-                    className="text-xs text-blue-400 transition hover:text-blue-300"
-                  >
-                    Forgot password?
-                  </button>
+                  <input
+                    id="email"
+                    type="email"
+                    placeholder="you@example.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="
+                      w-full
+                      border
+                      border-[#30445a]
+                      bg-[#0b192b]
+                      px-4
+                      py-3.5
+                      text-sm
+                      text-[#e8edf2]
+                      outline-none
+                      transition
+                      placeholder:text-[#52657a]
+                      focus:border-[#5fa8d3]
+                      focus:ring-1
+                      focus:ring-[#5fa8d3]/30
+                    "
+                  />
 
                 </div>
 
-                <input
-                  id="password"
-                  type="password"
-                  placeholder="••••••••"
-                   value={password}
-  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full rounded-xl border border-slate-800 bg-[#091626] px-4 py-3.5 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
-                />
+                {/* PASSWORD */}
+
+                <div>
+
+                  <div className="mb-2 flex items-center justify-between">
+
+                    <label
+                      htmlFor="password"
+                      className="text-[11px] font-bold uppercase tracking-wider text-[#c2cfda]"
+                    >
+                      Password
+                    </label>
+
+                    <button
+                      type="button"
+                      className="text-[10px] text-[#5fa8d3] transition hover:text-[#83c3e8] hover:underline"
+                    >
+                      forgot?
+                    </button>
+
+                  </div>
+
+                  <input
+                    id="password"
+                    type="password"
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="
+                      w-full
+                      border
+                      border-[#30445a]
+                      bg-[#0b192b]
+                      px-4
+                      py-3.5
+                      text-sm
+                      text-[#e8edf2]
+                      outline-none
+                      transition
+                      placeholder:text-[#52657a]
+                      focus:border-[#5fa8d3]
+                      focus:ring-1
+                      focus:ring-[#5fa8d3]/30
+                    "
+                  />
+
+                </div>
+
+                {/* ERROR */}
+
+                {error && (
+                  <div className="border border-[#7c4e4e] bg-[#291d25] px-3 py-2 text-xs text-[#e58b8b]">
+                    {error}
+                  </div>
+                )}
+
+                {/* LOGIN BUTTON */}
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="
+                    group
+                    w-full
+                    rotate-[-1deg]
+                    border-2
+                    border-[#52657a]
+                    bg-[#5fa8d3]
+                    py-3.5
+                    text-sm
+                    font-bold
+                    text-[#07111f]
+                    shadow-[5px_5px_0px_#050c15]
+                    transition-all
+                    hover:-translate-y-0.5
+                    hover:rotate-[0deg]
+                    hover:bg-[#73b7df]
+                    hover:shadow-[7px_7px_0px_#050c15]
+                    disabled:cursor-not-allowed
+                    disabled:opacity-60
+                  "
+                >
+                  {loading ? "CHECKING..." : "LOG IN →"}
+                </button>
+
+              </form>
+
+              {/* DIVIDER */}
+
+              <div className="my-8 flex items-center gap-4">
+
+                <div className="h-px flex-1 bg-[#30445a]" />
+
+                <span className="text-[9px] text-[#52657a]">
+                  OR
+                </span>
+
+                <div className="h-px flex-1 bg-[#30445a]" />
 
               </div>
 
-             {error && (
-  <p className="text-sm text-red-400">
-    {error}
-  </p>
-)}
-
-              {/* LOGIN */}
-
-              <button
-                  type="submit"
-                  disabled={loading}
-                className="w-full rounded-xl bg-white py-3.5 text-sm font-semibold text-[#07111f] transition duration-200 hover:scale-[1.01] hover:bg-slate-200"
-              >
-                Log in
-              </button>
-
-            </form>
-
-
-            {/* DIVIDER */}
-
-            <div className="my-8 flex items-center gap-4">
-
-              <div className="h-px flex-1 bg-slate-800" />
-
-              <span className="text-[10px] text-slate-600">
-                OR
-              </span>
-
-              <div className="h-px flex-1 bg-slate-800" />
-
-            </div>
-
-
-            {/* GUEST */}
-
-            <Link
-              href="/register"
-              className="block w-full rounded-xl border border-slate-800 py-3.5 text-center text-sm text-slate-300 transition hover:border-slate-600 hover:bg-[#0b192b] hover:text-white"
-            >
-              Continue as guest
-            </Link>
-
-
-            {/* SIGN UP */}
-
-            <p className="mt-7 text-center text-sm text-slate-500">
-
-              Don't have an account?{" "}
-
-              <Link
-                href="/dashboard"
-                className="text-blue-400 transition hover:text-blue-300"
-              >
-                Create one
-              </Link>
-
-            </p>
-
-
-            {/* BACK */}
-
-            <div className="mt-10 text-center">
+              {/* GUEST */}
 
               <Link
                 href="/"
-                className="text-xs text-slate-600 transition hover:text-slate-300"
+                className="
+                  block
+                  w-full
+                  border-2
+                  border-[#40556b]
+                  bg-[#15263a]
+                  py-3.5
+                  text-center
+                  text-xs
+                  font-bold
+                  text-[#c2cfda]
+                  transition
+                  hover:border-[#5b7085]
+                  hover:bg-[#1a2d43]
+                  hover:text-white
+                "
               >
-                ← Back to home
+                CONTINUE AS GUEST
               </Link>
+
+              {/* SIGN UP */}
+
+              <p className="mt-7 text-center text-[11px] text-[#627487]">
+
+                Don't have an account?{" "}
+
+                <Link
+                  href="/register"
+                  className="font-bold text-[#5fa8d3] transition hover:text-[#83c3e8] hover:underline"
+                >
+                  Create one
+                </Link>
+
+              </p>
+
+              {/* BACK */}
+
+              <div className="mt-8 border-t border-[#30445a] pt-6 text-center">
+
+                <Link
+                  href="/"
+                  className="text-[10px] uppercase tracking-widest text-[#627487] transition hover:text-[#aab8c5]"
+                >
+                  ← Back to home
+                </Link>
+
+              </div>
+
+              {/* HANDWRITTEN NOTE */}
+
+              <div className="absolute -bottom-12 right-0 rotate-[-4deg] text-[9px] text-[#5fa8d3]">
+
+                <span className="block">
+                  okay, let's settle
+                </span>
+
+                <span className="block text-right">
+                  this thing.
+                </span>
+
+              </div>
 
             </div>
 

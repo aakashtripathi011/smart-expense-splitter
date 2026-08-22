@@ -60,173 +60,519 @@ export default function Register() {
   };
 
   return (
-    <main className="min-h-screen bg-[#152238] font-mono text-white">
+    <main className="relative min-h-screen overflow-hidden bg-[#0b192b] font-mono text-[#e8edf2]">
 
-      <div className="flex min-h-screen items-center justify-center px-6 py-12">
+      {/* ================================================= */}
+      {/* SUBTLE BACKGROUND DOODLES */}
+      {/* ================================================= */}
+
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+
+
+        {/* Top left circle */}
+
+        <div
+          className="
+            absolute
+            left-[8%]
+            top-[16%]
+            h-24
+            w-24
+            rotate-[-12deg]
+            rounded-full
+            border-2
+            border-[#40556b]
+            opacity-40
+          "
+        />
+
+
+        {/* Top right ₹ */}
+
+        <span
+          className="
+            absolute
+            right-[12%]
+            top-[13%]
+            rotate-[12deg]
+            text-5xl
+            font-bold
+            text-[#30445a]
+          "
+        >
+          ₹
+        </span>
+
+
+        {/* Small plus */}
+
+        <span
+          className="
+            absolute
+            left-[16%]
+            top-[37%]
+            rotate-[10deg]
+            text-3xl
+            text-[#52657a]
+            opacity-50
+          "
+        >
+          +
+        </span>
+
+
+        {/* Arrow */}
+
+        <div className="absolute right-[11%] top-[38%] rotate-[8deg] opacity-45">
+
+          <svg
+            width="110"
+            height="70"
+            viewBox="0 0 110 70"
+            fill="none"
+          >
+
+            <path
+              d="M8 55 C35 15 70 12 98 22"
+              stroke="#5fa8d3"
+              strokeWidth="2"
+              strokeLinecap="round"
+            />
+
+            <path
+              d="M86 14 L100 22 L87 31"
+              stroke="#5fa8d3"
+              strokeWidth="2"
+              strokeLinecap="round"
+            />
+
+          </svg>
+
+        </div>
+
+
+        {/* Bottom left scribble */}
+
+        <div className="absolute bottom-[16%] left-[10%] rotate-[-8deg] opacity-40">
+
+          <svg
+            width="100"
+            height="80"
+            viewBox="0 0 100 80"
+            fill="none"
+          >
+
+            <path
+              d="M10 55 C25 15 75 15 90 50"
+              stroke="#52657a"
+              strokeWidth="2"
+              strokeLinecap="round"
+            />
+
+            <path
+              d="M20 60 C35 30 65 30 80 60"
+              stroke="#40556b"
+              strokeWidth="2"
+              strokeLinecap="round"
+            />
+
+          </svg>
+
+        </div>
+
+
+        {/* Bottom right handwritten text */}
+
+        <div
+          className="
+            absolute
+            bottom-[18%]
+            right-[9%]
+            rotate-[-7deg]
+            text-[11px]
+            leading-5
+            text-[#52657a]
+          "
+        >
+          <span className="text-[#5fa8d3]">
+            friends
+          </span>
+          {" + "}
+          <span>
+            food
+          </span>
+          <br />
+          <span>
+            = chaos
+          </span>
+        </div>
+
+
+        {/* Tiny dots */}
+
+        <span className="absolute left-[25%] top-[20%] h-2 w-2 rounded-full bg-[#5fa8d3] opacity-50" />
+        <span className="absolute right-[25%] bottom-[25%] h-1.5 w-1.5 rounded-full bg-[#52657a]" />
+
+      </div>
+
+
+      {/* ================================================= */}
+      {/* MAIN */}
+      {/* ================================================= */}
+
+      <div className="relative z-10 flex min-h-screen items-center justify-center px-6 py-12">
 
         <div className="w-full max-w-md">
 
+
           {/* LOGO */}
-
-          <div className="mb-12">
-
-            <Link
-              href="/"
-              className="text-xl font-bold"
-            >
-              split<span className="text-blue-400">.</span>
-            </Link>
-
-          </div>
-
-          {/* HEADING */}
 
           <div className="mb-10">
 
-            <p className="mb-3 text-xs uppercase tracking-[0.2em] text-blue-400">
-              get started
-            </p>
-
-            <h1 className="text-4xl font-semibold tracking-tight">
-              Create account
-            </h1>
-
-            <p className="mt-3 text-sm text-slate-500">
-              Start splitting expenses with your people.
-            </p>
+            <Link
+              href="/"
+              className="
+                text-2xl
+                font-black
+                tracking-[-0.08em]
+              "
+            >
+              split<span className="text-[#5fa8d3]">.</span>
+            </Link>
 
           </div>
 
-          {/* FORM */}
 
-          <form
-            onSubmit={handleRegister}
-            className="space-y-5"
+          {/* ================================================= */}
+          {/* FORM CARD */}
+          {/* ================================================= */}
+
+          <div
+            className="
+              relative
+              rotate-[0.5deg]
+              border-2
+              border-[#40556b]
+              bg-[#101f32]
+              p-8
+              shadow-[8px_9px_0px_rgba(0,0,0,0.35)]
+              md:p-10
+            "
           >
 
-            {/* NAME */}
 
-            <div>
+            {/* Tape */}
 
-              <label
-                htmlFor="name"
-                className="mb-2 block text-sm text-slate-300"
-              >
-                Name
-              </label>
+            <div
+              className="
+                absolute
+                -top-4
+                left-16
+                h-8
+                w-24
+                rotate-[-3deg]
+                bg-[#526b80]
+                opacity-45
+              "
+            />
 
-              <input
-                id="name"
-                type="text"
-                placeholder="Your name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-                className="w-full rounded-xl border border-slate-800 bg-[#091626] px-4 py-3.5 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
-              />
 
-            </div>
+            {/* Small doodle */}
 
-            {/* EMAIL */}
+            <span
+              className="
+                absolute
+                right-7
+                top-7
+                rotate-[10deg]
+                text-2xl
+                text-[#52657a]
+              "
+            >
+              +
+            </span>
 
-            <div>
 
-              <label
-                htmlFor="email"
-                className="mb-2 block text-sm text-slate-300"
-              >
-                Email
-              </label>
+            {/* ================================================= */}
+            {/* HEADING */}
+            {/* ================================================= */}
 
-              <input
-                id="email"
-                type="email"
-                placeholder="you@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="w-full rounded-xl border border-slate-800 bg-[#091626] px-4 py-3.5 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
-              />
+            <div className="mb-9">
 
-            </div>
-
-            {/* PASSWORD */}
-
-            <div>
-
-              <label
-                htmlFor="password"
-                className="mb-2 block text-sm text-slate-300"
-              >
-                Password
-              </label>
-
-              <input
-                id="password"
-                type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                minLength={6}
-                className="w-full rounded-xl border border-slate-800 bg-[#091626] px-4 py-3.5 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
-              />
-
-            </div>
-
-            {/* ERROR */}
-
-            {error && (
-              <p className="text-sm text-red-400">
-                {error}
+              <p className="mb-3 inline-block rotate-[-2deg] text-[10px] uppercase tracking-[0.25em] text-[#5fa8d3]">
+                get started
               </p>
-            )}
 
-            {/* SUCCESS */}
 
-            {success && (
-              <p className="text-sm text-green-400">
-                {success}
+              <h1 className="text-4xl font-black uppercase tracking-[-0.06em]">
+                Create account.
+              </h1>
+
+
+              <p className="mt-4 text-xs leading-6 text-[#718397]">
+                Start splitting expenses
+                <br />
+                with your people.
               </p>
-            )}
 
-            {/* CREATE BUTTON */}
+            </div>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full rounded-xl bg-white py-3.5 text-sm font-semibold text-[#07111f] transition duration-200 hover:scale-[1.01] hover:bg-slate-200 disabled:opacity-50"
+
+            {/* FORM */}
+
+            <form
+              onSubmit={handleRegister}
+              className="space-y-5"
             >
-              {loading ? "Creating..." : "Create account"}
-            </button>
 
-          </form>
+              {/* NAME */}
 
-          {/* LOGIN */}
+              <div>
 
-          <p className="mt-7 text-center text-sm text-slate-500">
+                <label
+                  htmlFor="name"
+                  className="
+                    mb-2
+                    block
+                    text-[10px]
+                    font-bold
+                    uppercase
+                    tracking-[0.15em]
+                    text-[#c2cfda]
+                  "
+                >
+                  Name
+                </label>
 
-            Already have an account?{" "}
+                <input
+                  id="name"
+                  type="text"
+                  placeholder="Your name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required
+                  className="
+                    w-full
+                    border
+                    border-[#30445a]
+                    bg-[#0b192b]
+                    px-4
+                    py-3.5
+                    text-sm
+                    text-[#e8edf2]
+                    outline-none
+                    transition
+                    placeholder:text-[#52657a]
+                    focus:border-[#5fa8d3]
+                    focus:ring-1
+                    focus:ring-[#5fa8d3]/20
+                  "
+                />
 
-            <Link
-              href="/login"
-              className="text-blue-400 transition hover:text-blue-300"
-            >
-              Log in
-            </Link>
+              </div>
 
-          </p>
 
-          {/* BACK */}
+              {/* EMAIL */}
 
-          <div className="mt-10 text-center">
+              <div>
 
-            <Link
-              href="/"
-              className="text-xs text-slate-600 transition hover:text-slate-300"
-            >
-              ← Back to home
-            </Link>
+                <label
+                  htmlFor="email"
+                  className="
+                    mb-2
+                    block
+                    text-[10px]
+                    font-bold
+                    uppercase
+                    tracking-[0.15em]
+                    text-[#c2cfda]
+                  "
+                >
+                  Email
+                </label>
+
+                <input
+                  id="email"
+                  type="email"
+                  placeholder="you@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  className="
+                    w-full
+                    border
+                    border-[#30445a]
+                    bg-[#0b192b]
+                    px-4
+                    py-3.5
+                    text-sm
+                    text-[#e8edf2]
+                    outline-none
+                    transition
+                    placeholder:text-[#52657a]
+                    focus:border-[#5fa8d3]
+                    focus:ring-1
+                    focus:ring-[#5fa8d3]/20
+                  "
+                />
+
+              </div>
+
+
+              {/* PASSWORD */}
+
+              <div>
+
+                <label
+                  htmlFor="password"
+                  className="
+                    mb-2
+                    block
+                    text-[10px]
+                    font-bold
+                    uppercase
+                    tracking-[0.15em]
+                    text-[#c2cfda]
+                  "
+                >
+                  Password
+                </label>
+
+                <input
+                  id="password"
+                  type="password"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  minLength={6}
+                  className="
+                    w-full
+                    border
+                    border-[#30445a]
+                    bg-[#0b192b]
+                    px-4
+                    py-3.5
+                    text-sm
+                    text-[#e8edf2]
+                    outline-none
+                    transition
+                    placeholder:text-[#52657a]
+                    focus:border-[#5fa8d3]
+                    focus:ring-1
+                    focus:ring-[#5fa8d3]/20
+                  "
+                />
+
+              </div>
+
+
+              {/* ERROR */}
+
+              {error && (
+                <p className="border border-[#704b52] bg-[#291d25] px-3 py-2 text-xs text-[#e58b8b]">
+                  {error}
+                </p>
+              )}
+
+
+              {/* SUCCESS */}
+
+              {success && (
+                <p className="border border-[#405f5a] bg-[#182d2d] px-3 py-2 text-xs text-[#75c7b5]">
+                  {success}
+                </p>
+              )}
+
+
+              {/* CREATE BUTTON */}
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="
+                  mt-2
+                  w-full
+                  rotate-[-1deg]
+                  border-2
+                  border-[#52657a]
+                  bg-[#5fa8d3]
+                  py-3.5
+                  text-sm
+                  font-bold
+                  uppercase
+                  tracking-[0.08em]
+                  text-[#07111f]
+                  shadow-[5px_5px_0px_#050c15]
+                  transition
+                  duration-200
+                  hover:translate-y-[-1px]
+                  hover:rotate-0
+                  hover:bg-[#73b7df]
+                  disabled:cursor-not-allowed
+                  disabled:opacity-50
+                "
+              >
+                {loading ? "Creating..." : "Create account →"}
+              </button>
+
+            </form>
+
+
+            {/* ================================================= */}
+            {/* LOGIN */}
+            {/* ================================================= */}
+
+            <p className="mt-7 text-center text-xs text-[#627487]">
+
+              Already have an account?{" "}
+
+              <Link
+                href="/login"
+                className="
+                  font-bold
+                  text-[#5fa8d3]
+                  transition
+                  hover:text-[#83c3e8]
+                  hover:underline
+                "
+              >
+                Log in
+              </Link>
+
+            </p>
+
+
+            {/* ================================================= */}
+            {/* BACK */}
+            {/* ================================================= */}
+
+            <div className="mt-8 border-t border-[#30445a] pt-6 text-center">
+
+              <Link
+                href="/"
+                className="
+                  text-[10px]
+                  uppercase
+                  tracking-[0.2em]
+                  text-[#52657a]
+                  transition
+                  hover:text-[#aab8c5]
+                "
+              >
+                ← Back to home
+              </Link>
+
+            </div>
+
+
+            {/* Tiny note */}
+
+            <div className="absolute -bottom-11 right-2 rotate-[-4deg] text-[9px] text-[#5fa8d3]">
+              more people,
+              <br />
+              less math.
+            </div>
 
           </div>
 
