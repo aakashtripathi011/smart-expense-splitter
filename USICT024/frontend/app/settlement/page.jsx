@@ -2,16 +2,22 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 export default function Settlement() {
   const searchParams = useSearchParams();
   const groupId = searchParams.get("groupId");
-  const [settling, setSettling] = useState(false);
 
   const [settlements, setSettlements] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  const [settlingExpenseId, setSettlingExpenseId] =
+    useState(null);
+
+  // =================================================
+  // FETCH SETTLEMENTS
+  // =================================================
 
   useEffect(() => {
     if (!groupId) {
@@ -20,76 +26,180 @@ export default function Settlement() {
       return;
     }
 
-    const fetchSettlements = async () => {
-      try {
-        setLoading(true);
-        setError("");
-
-        const token = localStorage.getItem("token");
-
-        if (!token) {
-          throw new Error("You are not logged in.");
-        }
-
-        console.log(
-          "FETCHING SETTLEMENTS FOR GROUP:",
-          groupId
-        );
-
-        const response = await fetch(
-          `http://localhost:5000/api/settlements/${groupId}`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-
-        const data = await response.json();
-
-        console.log("SETTLEMENT RESPONSE:", data);
-
-        if (!response.ok) {
-          throw new Error(
-            data.message || "Failed to fetch settlements"
-          );
-        }
-
-        setSettlements(
-          (data.settlements || []).map((payment) => ({
-            from: payment.from,
-            to: payment.to,
-            fromName:
-              payment.fromName || `User ${payment.from}`,
-            toName:
-              payment.toName || `User ${payment.to}`,
-            amount: Number(payment.amount),
-          }))
-        );
-      } catch (err) {
-        console.error(
-          "FETCH SETTLEMENTS ERROR:",
-          err
-        );
-
-        setError(
-          err instanceof Error
-            ? err.message
-            : "Failed to load settlements"
-        );
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchSettlements();
   }, [groupId]);
+
+  async function fetchSettlements() {
+    try {
+      setLoading(true);
+      setError("");
+
+      const token = localStorage.getItem("token");
+
+      if (!token) {
+        throw new Error("You are not logged in.");
+      }
+
+      const response = await fetch(
+        `http://localhost:5000/api/settlements/${groupId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const data = await response.json();
+
+      console.log(
+  "SETTLEMENT RESPONSE:",
+  JSON.stringify(data, null, 2)
+);
+
+      if (!response.ok) {
+        throw new Error(
+          data.message || "Failed to fetch settlements"
+        );
+      }
+
+      setSettlements(
+        (data.settlements || []).map((payment) => ({
+          expenseId: Number(payment.expenseId),
+
+          expenseDescription:
+            payment.expenseDescription || "Expense",
+
+          expenseTotal:
+            Number(payment.expenseTotal) || 0,
+
+          from: Number(payment.from),
+
+          to: Number(payment.to),
+
+          fromName:
+            payment.fromName ||
+            `User ${payment.from}`,
+
+          toName:
+            payment.toName ||
+            `User ${payment.to}`,
+
+          amount: Number(payment.amount),
+        }))
+      );
+    } catch (err) {
+      console.error(
+        "FETCH SETTLEMENTS ERROR:",
+        err
+      );
+
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to load settlements"
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // =================================================
+  // GROUP PAYMENTS BY EXPENSE
+  // =================================================
+
+  const expenses = useMemo(() => {
+    const grouped = {};
+
+    for (const payment of settlements) {
+      if (!grouped[payment.expenseId]) {
+        grouped[payment.expenseId] = {
+          expenseId: payment.expenseId,
+          expenseDescription:
+            payment.expenseDescription,
+          expenseTotal: payment.expenseTotal,
+          payments: [],
+        };
+      }
+
+      grouped[payment.expenseId].payments.push(
+        payment
+      );
+    }
+
+    return Object.values(grouped);
+  }, [settlements]);
+
+  // =================================================
+  // TOTAL OUTSTANDING
+  // =================================================
 
   const total = settlements.reduce(
     (sum, payment) =>
       sum + Number(payment.amount),
     0
   );
+
+  // =================================================
+  // MARK ONE EXPENSE AS SETTLED
+  // =================================================
+
+  async function markAsSettled(expenseId) {
+    try {
+      setSettlingExpenseId(expenseId);
+      setError("");
+
+      const token = localStorage.getItem("token");
+
+      if (!token) {
+        throw new Error("You are not logged in.");
+      }
+
+      console.log(
+        "MARKING EXPENSE AS SETTLED:",
+        expenseId
+      );
+
+      const response = await fetch(
+        `http://localhost:5000/api/settlements/${groupId}/expenses/${expenseId}/settle`,
+        {
+          method: "PATCH",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const data = await response.json();
+
+      console.log(
+        "MARK EXPENSE SETTLED RESPONSE:",
+        data
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          data.message ||
+            "Failed to mark expense as settled"
+        );
+      }
+
+      await fetchSettlements();
+
+    } catch (err) {
+      console.error(
+        "MARK SETTLED ERROR:",
+        err
+      );
+
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to mark expense as settled"
+      );
+    } finally {
+      setSettlingExpenseId(null);
+    }
+  }
 
   // =================================================
   // NO GROUP
@@ -157,7 +267,7 @@ export default function Settlement() {
           </p>
 
           <h1 className="mt-4 text-3xl font-semibold">
-            Failed to load settlements
+            Settlement error
           </h1>
 
           <p className="mt-4 text-sm text-red-300">
@@ -176,52 +286,6 @@ export default function Settlement() {
       </main>
     );
   }
-
-  async function markAsSettled() {
-  try {
-    setSettling(true);
-    setError("");
-
-    const token = localStorage.getItem("token");
-
-    if (!token) {
-      throw new Error("You are not logged in.");
-    }
-
-    const response = await fetch(
-      `http://localhost:5000/api/settlements/${groupId}/settle`,
-      {
-        method: "PATCH",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
-
-    const data = await response.json();
-
-    console.log("MARK SETTLED RESPONSE:", data);
-
-    if (!response.ok) {
-      throw new Error(
-        data.message || "Failed to mark settlements as settled"
-      );
-    }
-
-    window.location.reload();
-
-  } catch (err) {
-    console.error("MARK SETTLED ERROR:", err);
-
-    setError(
-      err instanceof Error
-        ? err.message
-        : "Failed to mark settlements as settled"
-    );
-  } finally {
-    setSettling(false);
-  }
-}
 
   // =================================================
   // MAIN PAGE
@@ -263,11 +327,11 @@ export default function Settlement() {
           </p>
 
           <h1 className="mt-4 text-4xl font-semibold tracking-tight md:text-5xl">
-            All settled up.
+            Settle expenses.
           </h1>
 
           <p className="mt-5 max-w-lg text-sm leading-6 text-slate-400">
-            Here&apos;s who needs to pay whom.
+            Here&apos;s who needs to pay whom for each expense.
           </p>
 
           <p className="mt-3 text-xs text-slate-600">
@@ -283,11 +347,11 @@ export default function Settlement() {
           <div className="rounded-2xl border border-white/10 bg-[#102038] p-6">
 
             <p className="text-xs uppercase tracking-wider text-slate-600">
-              Expense
+              Expenses
             </p>
 
             <p className="mt-3 text-lg">
-              Group Expenses
+              {expenses.length}
             </p>
 
           </div>
@@ -295,11 +359,11 @@ export default function Settlement() {
           <div className="rounded-2xl border border-white/10 bg-[#102038] p-6">
 
             <p className="text-xs uppercase tracking-wider text-slate-600">
-              Total
+              Payments
             </p>
 
             <p className="mt-3 text-lg">
-              ₹{total.toFixed(2)}
+              {settlements.length}
             </p>
 
           </div>
@@ -307,7 +371,7 @@ export default function Settlement() {
           <div className="rounded-2xl border border-white/10 bg-[#102038] p-6">
 
             <p className="text-xs uppercase tracking-wider text-slate-600">
-              To settle
+              Outstanding
             </p>
 
             <p className="mt-3 text-lg text-blue-400">
@@ -318,84 +382,157 @@ export default function Settlement() {
 
         </div>
 
-        {/* SETTLEMENTS */}
+        {/* EXPENSES */}
 
         <div className="mt-10">
 
           <div className="flex items-center justify-between">
 
             <h2 className="text-lg font-medium">
-              Payments
+              Expenses
             </h2>
 
             <span className="text-[10px] uppercase tracking-[0.2em] text-slate-600">
-              {settlements.length} PAYMENTS
+              {expenses.length} EXPENSES
             </span>
 
           </div>
 
-          <div className="mt-4 space-y-3">
+          <div className="mt-4 space-y-4">
 
-            {settlements.length === 0 ? (
+            {expenses.length === 0 ? (
 
-              <div className="rounded-2xl border border-white/10 bg-[#102038] p-6 text-sm text-slate-500">
-                No settlements needed.
+              <div className="rounded-2xl border border-blue-400/20 bg-[#102038] p-8">
+
+                <p className="text-sm text-blue-400">
+                  All expenses are settled.
+                </p>
+
+                <p className="mt-2 text-xs text-slate-500">
+                  There are no outstanding payments for this group.
+                </p>
+
               </div>
 
             ) : (
 
-              settlements.map((payment, index) => (
+              expenses.map((expense) => (
 
                 <div
-                  key={`${payment.from}-${payment.to}-${index}`}
-                  className="flex items-center justify-between rounded-2xl border border-white/10 bg-[#102038] p-6 transition hover:border-white/20"
+                  key={expense.expenseId}
+                  className="rounded-2xl border border-white/10 bg-[#102038] p-6 transition hover:border-white/20"
                 >
 
-                  <div className="flex items-center gap-4">
+                  {/* EXPENSE HEADER */}
 
-                    {/* FROM */}
-
-                    <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#1a304d] text-sm text-blue-400">
-                      {String(
-                        payment.fromName
-                      )
-                        .charAt(0)
-                        .toUpperCase()}
-                    </div>
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 
                     <div>
 
-                      <p className="text-sm">
-                        {payment.fromName}
+                      <p className="text-[10px] uppercase tracking-[0.2em] text-blue-400">
+                        Expense #{expense.expenseId}
                       </p>
 
-                      <p className="mt-1 text-xs text-slate-600">
-                        owes
+                      <p className="mt-2 text-base font-medium">
+                        {expense.expenseDescription}
                       </p>
+
+                      {expense.expenseTotal > 0 && (
+                        <p className="mt-1 text-xs text-slate-600">
+                          Expense total: ₹
+                          {expense.expenseTotal.toFixed(2)}
+                        </p>
+                      )}
 
                     </div>
 
-                    <span className="text-slate-600">
-                      →
-                    </span>
-
-                    {/* TO */}
-
-                    <div>
-
-                      <p className="text-sm">
-                        {payment.toName}
-                      </p>
-
-                    </div>
+                    <p className="text-lg font-medium text-blue-400">
+                      ₹
+                      {expense.payments
+                        .reduce(
+                          (sum, payment) =>
+                            sum + payment.amount,
+                          0
+                        )
+                        .toFixed(2)}
+                    </p>
 
                   </div>
 
-                  {/* AMOUNT */}
+                  {/* PAYMENTS */}
 
-                  <p className="text-lg font-medium text-blue-400">
-                    ₹{Number(payment.amount).toFixed(2)}
-                  </p>
+                  <div className="mt-6 space-y-3 border-t border-white/10 pt-5">
+
+                    {expense.payments.map(
+                      (payment, index) => (
+
+                        <div
+                          key={`${payment.from}-${payment.to}-${index}`}
+                          className="flex flex-col gap-4 rounded-xl bg-[#0d1b2d] p-4 sm:flex-row sm:items-center sm:justify-between"
+                        >
+
+                          <div className="flex items-center gap-4">
+
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#1a304d] text-sm text-blue-400">
+                              {String(
+                                payment.fromName
+                              )
+                                .charAt(0)
+                                .toUpperCase()}
+                            </div>
+
+                            <div>
+
+                              <p className="text-sm">
+                                {payment.fromName}
+                              </p>
+
+                              <p className="mt-1 text-xs text-slate-600">
+                                owes{" "}
+                                <span className="text-slate-400">
+                                  {payment.toName}
+                                </span>
+                              </p>
+
+                            </div>
+
+                          </div>
+
+                          <p className="text-lg font-medium text-blue-400">
+                            ₹{payment.amount.toFixed(2)}
+                          </p>
+
+                        </div>
+
+                      )
+                    )}
+
+                  </div>
+
+                  {/* SETTLE EXPENSE */}
+
+                  <div className="mt-5 flex justify-end border-t border-white/10 pt-5">
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        markAsSettled(
+                          expense.expenseId
+                        )
+                      }
+                      disabled={
+                        settlingExpenseId ===
+                        expense.expenseId
+                      }
+                      className="rounded-xl bg-white px-6 py-3 text-xs font-semibold uppercase tracking-wider text-[#152238] transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {settlingExpenseId ===
+                      expense.expenseId
+                        ? "Settling..."
+                        : "Mark expense as settled"}
+                    </button>
+
+                  </div>
 
                 </div>
 
@@ -407,34 +544,19 @@ export default function Settlement() {
 
         </div>
 
-        {/* DONE */}
+        {/* INFO */}
 
         <div className="mt-10 rounded-2xl border border-blue-400/20 bg-[#102038] p-7">
 
-          <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm">
+            Expense-level settlement
+          </p>
 
-            <div>
-
-              <p className="text-sm">
-                Ready to settle?
-              </p>
-
-              <p className="mt-2 text-xs text-slate-500">
-                Mark payments as complete once everyone has paid.
-              </p>
-
-            </div>
-
-            <button
-  type="button"
-  onClick={markAsSettled}
-  disabled={settling || settlements.length === 0}
-  className="rounded-xl bg-white px-7 py-3.5 text-xs font-semibold uppercase tracking-wider text-[#152238] transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
->
-  {settling ? "Settling..." : "Mark as settled"}
-</button>
-
-          </div>
+          <p className="mt-2 text-xs leading-6 text-slate-500">
+            Settling one expense only clears that
+            expense. Other expenses remain pending
+            until they are settled separately.
+          </p>
 
         </div>
 

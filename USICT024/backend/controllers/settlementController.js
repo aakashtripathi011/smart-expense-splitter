@@ -11,15 +11,21 @@ const {
 // =====================================================
 
 const getGroupSettlements = async (req, res) => {
+
+     console.log("🔥🔥🔥 GET GROUP SETTLEMENTS CALLED 🔥🔥🔥");
     try {
         const { groupId } = req.params;
         const userId = req.user.id;
 
-        // Check membership
+        // =================================================
+        // CHECK MEMBERSHIP
+        // =================================================
+
         const memberCheck = await pool.query(
             `SELECT id
              FROM group_members
-             WHERE group_id = $1 AND user_id = $2`,
+             WHERE group_id = $1
+               AND user_id = $2`,
             [groupId, userId]
         );
 
@@ -29,20 +35,6 @@ const getGroupSettlements = async (req, res) => {
             });
         }
 
-        // =================================================
-        // CHECK IF GROUP HAS BEEN SETTLED
-        // =================================================
-
-        const settlementStatus = await pool.query(
-            `SELECT COUNT(*) AS total
-             FROM settlements
-             WHERE group_id = $1
-               AND settled = true`,
-            [groupId]
-        );
-
-        const hasSettledRecords =
-            Number(settlementStatus.rows[0].total) > 0;
 
         // =================================================
         // GET EXPENSES
@@ -51,15 +43,27 @@ const getGroupSettlements = async (req, res) => {
         const expenseResult = await pool.query(
             `SELECT
                 id,
-                created_by,
-                total
+                description,
+                total,
+                created_at
              FROM expenses
-             WHERE group_id = $1`,
+             WHERE group_id = $1
+             ORDER BY created_at DESC`,
             [groupId]
         );
 
+
+        if (expenseResult.rows.length === 0) {
+            return res.status(200).json({
+                groupId,
+                balances: {},
+                settlements: [],
+            });
+        }
+
+
         // =================================================
-        // GET SHARES
+        // GET ALL SHARES
         // =================================================
 
         const sharesResult = await pool.query(
@@ -74,69 +78,47 @@ const getGroupSettlements = async (req, res) => {
             [groupId]
         );
 
-        const shares = {};
-        const payments = {};
+        console.log("GROUP ID:", groupId);
+console.log("SHARE ROWS:", sharesResult.rows);
 
-        // Calculate shares
-        for (const row of sharesResult.rows) {
-
-            if (!shares[row.user_id]) {
-                shares[row.user_id] = 0;
-            }
-
-            shares[row.user_id] += Number(row.amount);
-        }
-
-        // Calculate payments
-        for (const row of expenseResult.rows) {
-
-            if (!payments[row.created_by]) {
-                payments[row.created_by] = 0;
-            }
-
-            payments[row.created_by] += Number(row.total);
-        }
 
         // =================================================
-        // IF GROUP IS ALREADY SETTLED
-        // RETURN ZERO BALANCES
+        // GET ALL PAYMENTS
         // =================================================
 
-        if (hasSettledRecords) {
-
-            const userIds = new Set([
-                ...Object.keys(shares),
-                ...Object.keys(payments),
-            ]);
-
-            const balances = {};
-
-            for (const userId of userIds) {
-                balances[userId] = 0;
-            }
-
-            return res.status(200).json({
-                groupId,
-                balances,
-                settlements: [],
-            });
-        }
-
-        // =================================================
-        // CALCULATE BALANCES
-        // =================================================
-
-        const balances = calculateBalances(
-            shares,
-            payments
+        const payerResult = await pool.query(
+            `SELECT
+                ep.expense_id,
+                ep.user_id,
+                ep.amount
+             FROM expense_payers ep
+             INNER JOIN expenses e
+                ON ep.expense_id = e.id
+             WHERE e.group_id = $1`,
+            [groupId]
         );
 
+        console.log("PAYER ROWS:", payerResult.rows);
+
+
         // =================================================
-        // CALCULATE SETTLEMENTS
+        // GET ALREADY SETTLED EXPENSES
         // =================================================
 
-        const calculatedSettlements =
-            calculateSettlements(balances);
+        const settledResult = await pool.query(
+            `SELECT DISTINCT expense_id
+             FROM settlements
+             WHERE group_id = $1
+               AND settled = true`,
+            [groupId]
+        );
+
+        const settledExpenses = new Set(
+            settledResult.rows.map(
+                (row) => Number(row.expense_id)
+            )
+        );
+
 
         // =================================================
         // GET USER NAMES
@@ -152,9 +134,11 @@ const getGroupSettlements = async (req, res) => {
 
                  UNION
 
-                 SELECT DISTINCT created_by
-                 FROM expenses
-                 WHERE group_id = $1
+                 SELECT DISTINCT ep.user_id
+                 FROM expense_payers ep
+                 INNER JOIN expenses e
+                    ON ep.expense_id = e.id
+                 WHERE e.group_id = $1
 
                  UNION
 
@@ -167,39 +151,196 @@ const getGroupSettlements = async (req, res) => {
             [groupId]
         );
 
+
         const users = {};
 
         for (const user of usersResult.rows) {
             users[user.id] = user.name;
         }
 
+
         // =================================================
-        // ADD NAMES
+        // CREATE QUICK LOOKUPS
         // =================================================
 
-        const settlementsWithNames =
-            calculatedSettlements.map((settlement) => ({
-                from: settlement.from,
-                to: settlement.to,
-                amount: Number(settlement.amount),
+        const sharesByExpense = {};
+        const paymentsByExpense = {};
 
-                fromName:
-                    users[settlement.from] ||
-                    `User ${settlement.from}`,
 
-                toName:
-                    users[settlement.to] ||
-                    `User ${settlement.to}`,
-            }));
+        // =================================================
+        // ORGANIZE SHARES BY EXPENSE
+        // =================================================
+
+        for (const row of sharesResult.rows) {
+
+            const expenseId = Number(row.expense_id);
+
+            if (!sharesByExpense[expenseId]) {
+                sharesByExpense[expenseId] = {};
+            }
+
+            if (!sharesByExpense[expenseId][row.user_id]) {
+                sharesByExpense[expenseId][row.user_id] = 0;
+            }
+
+            sharesByExpense[expenseId][row.user_id] =
+                Number(
+                    (
+                        sharesByExpense[expenseId][row.user_id] +
+                        Number(row.amount)
+                    ).toFixed(2)
+                );
+        }
+
+
+        // =================================================
+        // ORGANIZE PAYMENTS BY EXPENSE
+        // =================================================
+
+        for (const row of payerResult.rows) {
+
+            const expenseId = Number(row.expense_id);
+
+            if (!paymentsByExpense[expenseId]) {
+                paymentsByExpense[expenseId] = {};
+            }
+
+            if (!paymentsByExpense[expenseId][row.user_id]) {
+                paymentsByExpense[expenseId][row.user_id] = 0;
+            }
+
+            paymentsByExpense[expenseId][row.user_id] =
+                Number(
+                    (
+                        paymentsByExpense[expenseId][row.user_id] +
+                        Number(row.amount)
+                    ).toFixed(2)
+                );
+        }
+
+
+        // =================================================
+        // CALCULATE EACH EXPENSE SEPARATELY
+        // =================================================
+
+        const settlements = [];
+        const groupBalances = {};
+
+
+        for (const expense of expenseResult.rows) {
+
+            const expenseId = Number(expense.id);
+
+
+            // ---------------------------------------------
+            // SKIP ALREADY SETTLED EXPENSE
+            // ---------------------------------------------
+
+            if (settledExpenses.has(expenseId)) {
+                continue;
+            }
+
+
+            const shares =
+                sharesByExpense[expenseId] || {};
+
+            const payments =
+                paymentsByExpense[expenseId] || {};
+
+
+            // ---------------------------------------------
+            // CALCULATE BALANCE FOR THIS EXPENSE
+            // ---------------------------------------------
+
+            const balances =
+                calculateBalances(
+                    shares,
+                    payments
+                );
+
+
+            // ---------------------------------------------
+            // STORE GROUP-LEVEL BALANCES
+            // ---------------------------------------------
+
+            for (const userId in balances) {
+
+                if (!groupBalances[userId]) {
+                    groupBalances[userId] = 0;
+                }
+
+                groupBalances[userId] =
+                    Number(
+                        (
+                            groupBalances[userId] +
+                            Number(balances[userId])
+                        ).toFixed(2)
+                    );
+            }
+
+
+            // ---------------------------------------------
+            // CALCULATE SETTLEMENTS FOR THIS EXPENSE
+            // ---------------------------------------------
+
+            const expenseSettlements =
+                calculateSettlements(balances);
+
+
+            // ---------------------------------------------
+            // ADD EXPENSE INFORMATION
+            // ---------------------------------------------
+
+            for (const settlement of expenseSettlements) {
+
+                settlements.push({
+
+                    // Expense information
+                    expenseId,
+
+                    expenseDescription:
+                        expense.description,
+
+                    expenseTotal:
+                        Number(expense.total),
+
+                    // Settlement information
+                    from:
+                        Number(settlement.from),
+
+                    to:
+                        Number(settlement.to),
+
+                    amount:
+                        Number(
+                            settlement.amount
+                        ),
+
+                    // User names
+                    fromName:
+                        users[settlement.from] ||
+                        `User ${settlement.from}`,
+
+                    toName:
+                        users[settlement.to] ||
+                        `User ${settlement.to}`,
+                });
+            }
+        }
+
 
         // =================================================
         // RESPONSE
         // =================================================
 
         res.status(200).json({
+
             groupId,
-            balances,
-            settlements: settlementsWithNames,
+
+            balances:
+                groupBalances,
+
+            settlements,
         });
 
     } catch (error) {
@@ -210,30 +351,52 @@ const getGroupSettlements = async (req, res) => {
         );
 
         res.status(500).json({
-            message: "Failed to calculate settlements",
-            error: error.message,
+
+            message:
+                "Failed to calculate settlements",
+
+            error:
+                error.message,
         });
     }
 };
 
 
 // =====================================================
-// MARK GROUP SETTLED
+// MARK ONE EXPENSE SETTLEMENT
 // =====================================================
 
-const markGroupSettlements = async (req, res) => {
+const markExpenseSettlement = async (req, res) => {
 
     console.log(
-        "========== MARK SETTLED =========="
+        "========== MARK EXPENSE SETTLED =========="
     );
 
     try {
 
-        const { groupId } = req.params;
+        const {
+            groupId,
+            expenseId,
+        } = req.params;
+
         const userId = req.user.id;
 
-        console.log("GROUP ID:", groupId);
-        console.log("USER ID:", userId);
+
+        console.log(
+            "GROUP ID:",
+            groupId
+        );
+
+        console.log(
+            "EXPENSE ID:",
+            expenseId
+        );
+
+        console.log(
+            "USER ID:",
+            userId
+        );
+
 
         // =================================================
         // CHECK MEMBERSHIP
@@ -242,94 +405,217 @@ const markGroupSettlements = async (req, res) => {
         const memberCheck = await pool.query(
             `SELECT id
              FROM group_members
-             WHERE group_id = $1 AND user_id = $2`,
-            [groupId, userId]
+             WHERE group_id = $1
+               AND user_id = $2`,
+            [
+                groupId,
+                userId,
+            ]
         );
 
         if (memberCheck.rows.length === 0) {
+
             return res.status(403).json({
-                message: "You are not a member of this group",
+                message:
+                    "You are not a member of this group",
             });
         }
 
+
         // =================================================
-        // GET EXPENSES
+        // GET SPECIFIC EXPENSE
         // =================================================
 
         const expenseResult = await pool.query(
             `SELECT
                 id,
-                created_by,
+                group_id,
+                description,
                 total
              FROM expenses
-             WHERE group_id = $1`,
-            [groupId]
+             WHERE id = $1
+               AND group_id = $2`,
+            [
+                expenseId,
+                groupId,
+            ]
         );
 
         if (expenseResult.rows.length === 0) {
-            return res.status(400).json({
-                message: "No expenses found for this group",
+
+            return res.status(404).json({
+                message:
+                    "Expense not found in this group",
             });
         }
 
+
         // =================================================
-        // GET SHARES
+        // CHECK IF ALREADY SETTLED
+        // =================================================
+
+        const alreadySettled = await pool.query(
+            `SELECT id
+             FROM settlements
+             WHERE group_id = $1
+               AND expense_id = $2
+               AND settled = true`,
+            [
+                groupId,
+                expenseId,
+            ]
+        );
+
+        if (alreadySettled.rows.length > 0) {
+
+            return res.status(400).json({
+                message:
+                    "This expense is already settled",
+            });
+        }
+
+
+        // =================================================
+        // GET SHARES FOR THIS EXPENSE
         // =================================================
 
         const sharesResult = await pool.query(
             `SELECT
-                es.user_id,
-                es.amount
-             FROM expense_shares es
-             INNER JOIN expenses e
-                ON es.expense_id = e.id
-             WHERE e.group_id = $1`,
-            [groupId]
+                user_id,
+                amount
+             FROM expense_shares
+             WHERE expense_id = $1`,
+            [expenseId]
         );
+
+
+        // =================================================
+        // GET PAYMENTS FOR THIS EXPENSE
+        // =================================================
+
+        const payerResult = await pool.query(
+            `SELECT
+                user_id,
+                amount
+             FROM expense_payers
+             WHERE expense_id = $1`,
+            [expenseId]
+        );
+
+        console.log("========== SETTLEMENT DEBUG ==========");
+console.log("GROUP ID:", groupId);
+console.log("SHARE ROWS:", sharesResult.rows);
+console.log("PAYER ROWS:", payerResult.rows);
+console.log("======================================");
+
+
+        if (sharesResult.rows.length === 0) {
+
+            return res.status(400).json({
+                message:
+                    "No shares found for this expense",
+            });
+        }
+
+
+        if (payerResult.rows.length === 0) {
+
+            return res.status(400).json({
+                message:
+                    "No payer found for this expense",
+            });
+        }
+
+
+        // =================================================
+        // BUILD BALANCES
+        // =================================================
 
         const shares = {};
         const payments = {};
 
-        // Calculate shares
+
+        // =================================================
+        // SHARES
+        // =================================================
+
         for (const row of sharesResult.rows) {
 
             if (!shares[row.user_id]) {
                 shares[row.user_id] = 0;
             }
 
-            shares[row.user_id] += Number(row.amount);
+            shares[row.user_id] =
+                Number(
+                    (
+                        shares[row.user_id] +
+                        Number(row.amount)
+                    ).toFixed(2)
+                );
         }
 
-        // Calculate payments
-        for (const row of expenseResult.rows) {
 
-            if (!payments[row.created_by]) {
-                payments[row.created_by] = 0;
+        // =================================================
+        // PAYMENTS
+        // =================================================
+
+        for (const row of payerResult.rows) {
+
+            if (!payments[row.user_id]) {
+                payments[row.user_id] = 0;
             }
 
-            payments[row.created_by] += Number(row.total);
+            payments[row.user_id] =
+                Number(
+                    (
+                        payments[row.user_id] +
+                        Number(row.amount)
+                    ).toFixed(2)
+                );
         }
+
 
         // =================================================
         // CALCULATE BALANCES
         // =================================================
 
-        const balances = calculateBalances(
-            shares,
-            payments
+        const balances =
+            calculateBalances(
+                shares,
+                payments
+            );
+
+
+        console.log(
+            "EXPENSE BALANCES:",
+            balances
         );
+
 
         // =================================================
         // CALCULATE SETTLEMENTS
         // =================================================
 
-        const settlements =
-            calculateSettlements(balances);
+        const calculatedSettlements =
+            calculateSettlements(
+                balances
+            );
+
 
         console.log(
-            "CALCULATED SETTLEMENTS:",
-            settlements
+            "EXPENSE SETTLEMENTS:",
+            calculatedSettlements
         );
+
+
+        if (calculatedSettlements.length === 0) {
+
+            return res.status(400).json({
+                message:
+                    "This expense does not require a settlement",
+            });
+        }
+
 
         // =================================================
         // INSERT SETTLEMENT RECORDS
@@ -337,50 +623,66 @@ const markGroupSettlements = async (req, res) => {
 
         let inserted = 0;
 
-        for (const settlement of settlements) {
 
-            const payerId = Number(settlement.from);
-            const receiverId = Number(settlement.to);
-            const amount = Number(settlement.amount);
+        for (
+            const settlement
+            of calculatedSettlements
+        ) {
 
-            // Use first expense only because
-            // expense_id is required by your table.
-            const expenseId =
-                expenseResult.rows[0].id;
+            const payerId =
+                Number(settlement.from);
 
-            // Check if this exact settlement
-            // is already marked settled
+            const receiverId =
+                Number(settlement.to);
+
+            const amount =
+                Number(settlement.amount);
+
+
+            // ---------------------------------------------
+            // CHECK DUPLICATE
+            // ---------------------------------------------
+
             const existing = await pool.query(
                 `SELECT id
                  FROM settlements
                  WHERE group_id = $1
-                   AND payer_id = $2
-                   AND receiver_id = $3
-                   AND amount = $4
+                   AND expense_id = $2
+                   AND payer_id = $3
+                   AND receiver_id = $4
+                   AND amount = $5
                    AND settled = true`,
                 [
                     groupId,
+                    expenseId,
                     payerId,
                     receiverId,
                     amount,
                 ]
             );
 
+
             if (existing.rows.length > 0) {
                 continue;
             }
 
+
+            // ---------------------------------------------
+            // INSERT
+            // ---------------------------------------------
+
             await pool.query(
                 `INSERT INTO settlements
-                 (
+                (
                     expense_id,
                     payer_id,
                     receiver_id,
                     amount,
                     settled,
                     group_id
-                 )
-                 VALUES ($1, $2, $3, $4, true, $5)`,
+                )
+                VALUES
+                ($1, $2, $3, $4, true, $5)`,
                 [
                     expenseId,
                     payerId,
@@ -390,34 +692,48 @@ const markGroupSettlements = async (req, res) => {
                 ]
             );
 
+
             inserted++;
         }
 
-        console.log(
-            "INSERTED SETTLEMENTS:",
-            inserted
-        );
 
         // =================================================
         // RESPONSE
         // =================================================
 
+        console.log(
+            "INSERTED:",
+            inserted
+        );
+
+
         res.status(200).json({
-            message: "All settlements marked as settled",
-            updated: inserted,
+
+            message:
+                "Expense settlement marked as settled",
+
+            expenseId:
+                Number(expenseId),
+
+            updated:
+                inserted,
         });
+
 
     } catch (error) {
 
         console.error(
-            "Mark settlement error:",
+            "Mark expense settlement error:",
             error
         );
 
         res.status(500).json({
+
             message:
-                "Failed to mark settlements as settled",
-            error: error.message,
+                "Failed to mark expense settlement",
+
+            error:
+                error.message,
         });
     }
 };
@@ -429,5 +745,5 @@ const markGroupSettlements = async (req, res) => {
 
 module.exports = {
     getGroupSettlements,
-    markGroupSettlements,
+    markExpenseSettlement,
 };

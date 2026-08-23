@@ -4,7 +4,7 @@ const router = express.Router();
 
 const {
     getGroupSettlements,
-    markGroupSettlements,
+    markExpenseSettlement,
 } = require("../controllers/settlementController");
 
 const authMiddleware = require("../middleware/authMiddleware");
@@ -16,9 +16,9 @@ router.get(
 );
 
 router.patch(
-    "/:groupId/settle",
+    "/:groupId/expenses/:expenseId/settle",
     authMiddleware,
-    markGroupSettlements
+    markExpenseSettlement
 );
 
 module.exports = router;

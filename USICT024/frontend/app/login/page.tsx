@@ -2,23 +2,32 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import Image from "next/image";
 
 const slides = [
   {
-    image: "/carousel/lana.jpg",
+    title: "DINNER WITH FRIENDS.",
+    text: "Someone paid the bill.",
+    highlight: "Someone still owes money.",
   },
   {
-    image: "/carousel/office2.jpg",
+    title: "WEEKEND TRIP.",
+    text: "Hotels, food, cabs.",
+    highlight: "Split everything fairly.",
   },
   {
-    image: "/carousel/office3.jpg",
+    title: "ROOMMATES.",
+    text: "Rent. Groceries. Utilities.",
+    highlight: "No more awkward calculations.",
   },
   {
-    image: "/carousel/office4.jpg",
+    title: "GROUP PROJECT.",
+    text: "One person bought everything.",
+    highlight: "Everyone pays their share.",
   },
   {
-    image: "/carousel/office5.jpg",
+    title: "JUST SPLIT IT.",
+    text: "Track who paid.",
+    highlight: "Know who owes what.",
   },
 ];
 
@@ -119,31 +128,37 @@ export default function Login() {
 
         <div className="grid w-full items-center gap-16 lg:grid-cols-[1.05fr_0.95fr]">
 
-          {/* LEFT — SCRAPBOOK */}
+          {/* LEFT — TEXT CAROUSEL */}
 
           <div className="relative hidden min-h-[600px] lg:block">
 
             {/* LABEL */}
 
             <div className="absolute left-4 top-5 z-20 rotate-[-2deg]">
+
               <p className="text-[10px] uppercase tracking-[0.25em] text-[#718397]">
                 memories / 01
               </p>
+
             </div>
 
-            {/* PHOTO */}
+            {/* TEXT CARD */}
 
             <div
               className="
                 absolute
                 left-[8%]
                 top-[13%]
+                flex
                 h-[420px]
                 w-[430px]
                 rotate-[-2deg]
+                flex-col
+                justify-center
                 border-[9px]
                 border-[#172a40]
                 bg-[#172a40]
+                p-10
                 shadow-[7px_9px_0px_rgba(0,0,0,0.35)]
               "
             >
@@ -165,18 +180,32 @@ export default function Login() {
                 "
               />
 
-              <div className="relative h-full w-full overflow-hidden">
+              {/* CAROUSEL CONTENT */}
 
-                <Image
-                  key={slide.image}
-                  src={slide.image}
-                  alt=""
-                  fill
-                  priority
-                  sizes="430px"
-                  className="object-cover transition-opacity duration-700"
-                />
+              <div className="transition-opacity duration-700">
 
+                <p className="mb-6 text-[10px] uppercase tracking-[0.3em] text-[#5fa8d3]">
+                  split. / {String(currentSlide + 1).padStart(2, "0")}
+                </p>
+
+                <h2 className="max-w-sm text-4xl font-black uppercase leading-[0.95] tracking-[-0.07em] text-[#e8edf2]">
+                  {slide.title}
+                </h2>
+
+                <p className="mt-8 text-sm leading-6 text-[#aab8c5]">
+                  {slide.text}
+                </p>
+
+                <p className="mt-2 text-sm leading-6 text-[#5fa8d3]">
+                  {slide.highlight}
+                </p>
+
+              </div>
+
+              {/* SMALL HANDWRITTEN LINE */}
+
+              <div className="absolute bottom-7 left-10 rotate-[-2deg] text-[9px] text-[#627487]">
+                no awkward math required.
               </div>
 
             </div>
@@ -200,9 +229,11 @@ export default function Login() {
             {/* SLIDE COUNTER */}
 
             <div className="absolute bottom-[10%] right-[12%] text-[10px] tracking-widest text-[#627487]">
+
               {String(currentSlide + 1).padStart(2, "0")}
               {" / "}
               {String(slides.length).padStart(2, "0")}
+
             </div>
 
             {/* HAND-DRAWN ARROW */}
