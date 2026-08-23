@@ -15,15 +15,13 @@ export default function Receipt() {
     ? Number(groupIdParam)
     : null;
 
-  const [file, setFile] = useState<File | null>(null);
+ const [file, setFile] = useState(null);
   const [fileName, setFileName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [receiptData, setReceiptData] = useState<any>(null);
+  const [receiptData, setReceiptData] = useState(null);
 
-  function handleFile(
-    event: React.ChangeEvent<HTMLInputElement>
-  ) {
+ function handleFile(event) {
     const selectedFile = event.target.files?.[0];
 
     if (selectedFile) {
@@ -75,7 +73,7 @@ export default function Receipt() {
       }
 
       setReceiptData(data);
-    } catch (error: unknown) {
+     } catch (error) {
       console.error(
         "Receipt processing error:",
         error
@@ -399,15 +397,8 @@ export default function Receipt() {
             {/* ITEMS */}
 
             <div className="mt-5 space-y-2">
-
-              {receiptData.items?.map(
-                (
-                  item: {
-                    name: string;
-                    price: number;
-                  },
-                  index: number
-                ) => (
+{receiptData.items?.map(
+  (item, index) => (
 
                   <div
                     key={index}

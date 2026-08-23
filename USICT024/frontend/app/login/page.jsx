@@ -48,46 +48,46 @@ export default function Login() {
 
   const slide = slides[currentSlide];
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleLogin = async (e) => {
+  e.preventDefault();
 
-    setError("");
-    setLoading(true);
+  setError("");
+  setLoading(true);
 
-    try {
-      const response = await fetch(
-        "http://localhost:5000/api/auth/login",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            email,
-            password,
-          }),
-        }
-      );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        setError(data.message || "Login failed");
-        return;
+  try {
+    const response = await fetch(
+      "http://localhost:5000/api/auth/login",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email,
+          password,
+        }),
       }
+    );
 
-      localStorage.setItem("token", data.token);
-      localStorage.setItem("user", JSON.stringify(data.user));
+    const data = await response.json();
 
-      document.cookie = `token=${data.token}; path=/; max-age=604800; SameSite=Lax`;
-
-      window.location.href = "/dashboard";
-    } catch (error) {
-      setError("Unable to connect to server");
-    } finally {
-      setLoading(false);
+    if (!response.ok) {
+      setError(data.message || "Login failed");
+      return;
     }
-  };
+
+    localStorage.setItem("token", data.token);
+    localStorage.setItem("user", JSON.stringify(data.user));
+
+    document.cookie = `token=${data.token}; path=/; max-age=604800; SameSite=Lax`;
+
+    window.location.href = "/dashboard";
+  } catch (error) {
+    setError("Unable to connect to server");
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#0b192b] font-mono text-[#e8edf2]">
@@ -505,7 +505,7 @@ export default function Login() {
 
               <p className="mt-7 text-center text-[11px] text-[#627487]">
 
-                Don't have an account?{" "}
+                Dont have an account?{" "}
 
                 <Link
                   href="/register"
@@ -534,7 +534,7 @@ export default function Login() {
               <div className="absolute -bottom-12 right-0 rotate-[-4deg] text-[9px] text-[#5fa8d3]">
 
                 <span className="block">
-                  okay, let's settle
+                  okay, lets settle
                 </span>
 
                 <span className="block text-right">

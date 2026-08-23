@@ -632,9 +632,6 @@ export default function Home() {
 function Person({
   name,
   amount,
-}: {
-  name: string;
-  amount: string;
 }) {
   return (
     <div className="flex items-center justify-between border-b border-[#40556b] pb-2">
@@ -659,11 +656,6 @@ function Feature({
   title,
   description,
   rotate,
-}: {
-  number: string;
-  title: string;
-  description: string;
-  rotate: string;
 }) {
   return (
     <div
