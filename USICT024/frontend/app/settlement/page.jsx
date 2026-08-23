@@ -8,7 +8,7 @@ export default function Settlement() {
   const searchParams = useSearchParams();
   const groupId = searchParams.get("groupId");
 
-  const [settlements, setSettlements] = useState([]);
+const [settlements, setSettlements] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
