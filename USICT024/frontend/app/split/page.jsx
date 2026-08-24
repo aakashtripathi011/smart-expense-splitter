@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 
 const API_URL = "http://localhost:5000/api";
 
@@ -19,8 +19,7 @@ function getErrorMessage(error) {
 
   return "Something went wrong";
 }
-
-export default function Split() {
+function SplitContent() {
   const searchParams = useSearchParams();
 
   const groupIdParam = searchParams.get("groupId");
@@ -1340,6 +1339,23 @@ const body = {
       </section>
 
     </main>
+  );
+}
+
+
+export default function Split() {
+  return (
+    <Suspense
+      fallback={
+        <main className="flex min-h-screen items-center justify-center bg-[#0b192b] font-mono text-white">
+          <p className="text-sm text-slate-500">
+            Loading split...
+          </p>
+        </main>
+      }
+    >
+      <SplitContent />
+    </Suspense>
   );
 }
 

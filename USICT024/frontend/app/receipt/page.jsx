@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { Suspense, useState } from "react";
 
 const API_URL = "http://localhost:5000/api";
 
-export default function Receipt() {
+function ReceiptContent() {
   const searchParams = useSearchParams();
 
   const groupIdParam = searchParams.get("groupId");
@@ -521,5 +521,13 @@ export default function Receipt() {
       </section>
 
     </main>
+  );
+}
+
+export default function Receipt() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <ReceiptContent />
+    </Suspense>
   );
 }

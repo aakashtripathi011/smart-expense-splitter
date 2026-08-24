@@ -2,9 +2,8 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
-
-export default function Settlement() {
+import { Suspense, useEffect, useMemo, useState } from "react";
+function SettlementContent() {
   const searchParams = useSearchParams();
   const groupId = searchParams.get("groupId");
 
@@ -594,5 +593,21 @@ const [settlements, setSettlements] = useState([]);
       </section>
 
     </main>
+  );
+}
+
+export default function Settlement() {
+  return (
+    <Suspense
+      fallback={
+        <main className="flex min-h-screen items-center justify-center bg-[#152238] font-mono text-white">
+          <p className="text-sm text-slate-400">
+            Loading settlements...
+          </p>
+        </main>
+      }
+    >
+      <SettlementContent />
+    </Suspense>
   );
 }
