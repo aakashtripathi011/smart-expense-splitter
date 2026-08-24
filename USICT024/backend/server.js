@@ -15,6 +15,7 @@ const PORT = 5000;
 app.use(cors({
     origin: [
         "http://localhost:3000",
+        "https://smart-expense-splitter-ten.vercel.app",
         "https://smart-expense-splitter-git-main-aakash-5827.vercel.app"
     ]
 }));
