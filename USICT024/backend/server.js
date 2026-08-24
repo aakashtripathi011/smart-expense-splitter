@@ -9,6 +9,8 @@ const expenseRoutes = require("./routes/expenseRoutes");
 const settlementRoutes = require("./routes/settlementRoutes");
 
 const app = express();
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 const PORT = 5000;
 
