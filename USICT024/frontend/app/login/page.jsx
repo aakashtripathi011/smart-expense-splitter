@@ -56,7 +56,7 @@ export default function Login() {
 
   try {
     const response = await fetch(
-      "http://localhost:5000/api/auth/login",
+  "https://smart-expense-splitter-paiy.onrender.com/api/auth/login",
       {
         method: "POST",
         headers: {
