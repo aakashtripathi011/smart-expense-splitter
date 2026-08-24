@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 
-const API_URL = "http://localhost:5000/api";
+const API_URL =
+  "https://smart-expense-splitter-paiy.onrender.com/api";
 
 function ReceiptContent() {
   const searchParams = useSearchParams();
@@ -50,6 +51,10 @@ function ReceiptContent() {
 
       const formData = new FormData();
       formData.append("receipt", file);
+
+      console.log("RECEIPT API URL:", `${API_URL}/receipts`);
+console.log("FILE:", file);
+console.log("TOKEN EXISTS:", !!token);
 
       const response = await fetch(
         `${API_URL}/receipts`,
