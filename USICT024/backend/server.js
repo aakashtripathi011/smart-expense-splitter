@@ -14,6 +14,25 @@ app.use(express.urlencoded({ extended: true }));
 
 const PORT = 5000;
 
+app.get("/db-test", async (req, res) => {
+  try {
+    const result = await pool.query("SELECT NOW()");
+
+    res.json({
+      message: "Database connected",
+      time: result.rows[0].now,
+    });
+  } catch (error) {
+    console.error("DATABASE ERROR:", error);
+
+    res.status(500).json({
+      message: "Database connection failed",
+      error: error.message,
+      code: error.code,
+    });
+  }
+});
+
 app.use(cors({
     origin: [
         "http://localhost:3000",
