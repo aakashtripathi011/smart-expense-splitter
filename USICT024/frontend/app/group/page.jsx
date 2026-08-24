@@ -3,8 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-const API_URL = "http://localhost:5000/api";
-
+const API_URL = "https://smart-expense-splitter-paiy.onrender.com/api";
 export default function Group() {
   const [groups, setGroups] = useState([]);
   const [showCreate, setShowCreate] = useState(false);
@@ -34,6 +33,10 @@ export default function Group() {
       setError("");
 
       const token = localStorage.getItem("token");
+
+
+console.log("GROUP API URL:", `${API_URL}/groups`);
+console.log("GROUP TOKEN EXISTS:", !!token);
 
       const response = await fetch(`${API_URL}/groups`, {
         method: "GET",
