@@ -1,16 +1,11 @@
-
 "use client";
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 
-const API_URL = "https://smart-expense-splitter-paiy.onrender.com/api";
-
-
-
-
-
+const API_URL =
+  "https://smart-expense-splitter-paiy.onrender.com/api";
 
 function getErrorMessage(error) {
   if (error instanceof Error) {
@@ -19,6 +14,7 @@ function getErrorMessage(error) {
 
   return "Something went wrong";
 }
+
 function SplitContent() {
   const searchParams = useSearchParams();
 
@@ -28,38 +24,43 @@ function SplitContent() {
     ? Number(groupIdParam)
     : null;
 
- const [people, setPeople] = useState([]);
+  // =================================================
+  // STATE
+  // =================================================
+
+  const [people, setPeople] = useState([]);
   const [items, setItems] = useState([]);
 
-  const [amount, setAmount] = useState<number>(0);
+  const [amount, setAmount] = useState(0);
+
   const [expenseName, setExpenseName] =
-    useState<string>("");
+    useState("");
 
   const [splitType, setSplitType] =
-    useState<"equal" | "item">("equal");
+    useState("equal");
 
   // Who actually paid
   const [payerId, setPayerId] =
-    useState<number | null>(null);
+    useState(null);
 
   // How much the payer paid
   const [paymentAmount, setPaymentAmount] =
-    useState<number>(0);
+    useState(0);
 
   const [loading, setLoading] =
-    useState<boolean>(true);
+    useState(true);
 
   const [creating, setCreating] =
-    useState<boolean>(false);
+    useState(false);
 
   const [error, setError] =
-    useState<string>("");
+    useState("");
 
   // =================================================
   // LOAD RECEIPT
   // =================================================
 
-function loadReceipt() {
+  function loadReceipt() {
     try {
       const storedReceipt =
         localStorage.getItem("receiptData");
@@ -74,7 +75,7 @@ function loadReceipt() {
       }
 
       const receipt =
-  JSON.parse(storedReceipt);
+        JSON.parse(storedReceipt);
 
       console.log(
         "PARSED RECEIPT:",
@@ -123,7 +124,6 @@ function loadReceipt() {
   // =================================================
 
   async function fetchMembers(currentGroupId) {
- 
     try {
       setLoading(true);
       setError("");
@@ -168,8 +168,8 @@ function loadReceipt() {
           ? data.members
           : [];
 
-const formattedPeople =
-  members
+      const formattedPeople =
+        members
           .map((member) => {
             const memberId =
               member.user_id ??
@@ -189,11 +189,8 @@ const formattedPeople =
             };
           })
           .filter(
-            (
-              member
-          ) =>
-  member !== null
-              
+            (member) =>
+              member !== null
           );
 
       setPeople(formattedPeople);
@@ -206,7 +203,6 @@ const formattedPeople =
           formattedPeople[0].id
         );
       }
-
     } catch (error) {
       console.error(
         "Members error:",
@@ -218,7 +214,6 @@ const formattedPeople =
       setError(
         getErrorMessage(error)
       );
-
     } finally {
       setLoading(false);
     }
@@ -245,7 +240,7 @@ const formattedPeople =
   // SELECT / UNSELECT MEMBER
   // =================================================
 
-function togglePerson(id) {
+  function togglePerson(id) {
     setPeople((current) =>
       current.map((person) =>
         person.id === id
@@ -263,18 +258,18 @@ function togglePerson(id) {
   // SELECT PAYER
   // =================================================
 
-function selectPayer(id) {
-  setPayerId(id);
-}
+  function selectPayer(id) {
+    setPayerId(id);
+  }
 
   // =================================================
   // ASSIGN ITEM TO USER
   // =================================================
 
- function toggleItemUser(
-  itemIndex,
-  userId
-) {
+  function toggleItemUser(
+    itemIndex,
+    userId
+  ) {
     setItems((current) =>
       current.map((item, index) => {
         if (index !== itemIndex) {
@@ -312,8 +307,8 @@ function selectPayer(id) {
   // ITEM SHARES
   // =================================================
 
- function calculateItemTotals() {
-  const totals = {};
+  function calculateItemTotals() {
+    const totals = {};
 
     for (const item of items) {
       if (item.userIds.length === 0) {
@@ -444,20 +439,14 @@ function selectPayer(id) {
       // REQUEST BODY
       // =========================
 
-const body = {
+      const body = {
         groupId,
         description:
           expenseName.trim(),
-
         amount:
           Number(amount),
-
         splitType,
-
-        // Actual payer
         payerId,
-
-        // Amount actually paid
         paymentAmount:
           Number(paymentAmount),
       };
@@ -521,7 +510,7 @@ const body = {
         );
 
       const data =
-  await response.json();
+        await response.json();
 
       console.log(
         "CREATE EXPENSE RESPONSE:",
@@ -546,7 +535,6 @@ const body = {
 
       window.location.href =
         `/group/${groupId}`;
-
     } catch (error) {
       console.error(
         "Create expense error:",
@@ -556,7 +544,6 @@ const body = {
       setError(
         getErrorMessage(error)
       );
-
     } finally {
       setCreating(false);
     }
@@ -599,7 +586,10 @@ const body = {
             href="/dashboard"
             className="text-xl font-bold"
           >
-            split<span className="text-blue-400">.</span>
+            split
+            <span className="text-blue-400">
+              .
+            </span>
           </Link>
         </nav>
 
@@ -1342,7 +1332,6 @@ const body = {
   );
 }
 
-
 export default function Split() {
   return (
     <Suspense
@@ -1358,4 +1347,3 @@ export default function Split() {
     </Suspense>
   );
 }
-
