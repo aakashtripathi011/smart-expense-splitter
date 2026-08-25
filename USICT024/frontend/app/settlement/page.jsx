@@ -3,11 +3,15 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
+
+const API_URL =
+  "https://smart-expense-splitter-paiy.onrender.com/api";
+
 function SettlementContent() {
   const searchParams = useSearchParams();
   const groupId = searchParams.get("groupId");
 
-const [settlements, setSettlements] = useState([]);
+  const [settlements, setSettlements] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -25,6 +29,13 @@ const [settlements, setSettlements] = useState([]);
       return;
     }
 
+    console.log("===== SETTLEMENT PAGE =====");
+    console.log("GROUP ID:", groupId);
+    console.log(
+      "SETTLEMENT API URL:",
+      `${API_URL}/settlements/${groupId}`
+    );
+
     fetchSettlements();
   }, [groupId]);
 
@@ -35,38 +46,64 @@ const [settlements, setSettlements] = useState([]);
 
       const token = localStorage.getItem("token");
 
+      console.log("===== SETTLEMENT FETCH START =====");
+      console.log("GROUP ID:", groupId);
+      console.log("TOKEN EXISTS:", !!token);
+
       if (!token) {
         throw new Error("You are not logged in.");
       }
 
+      const settlementUrl =
+        `${API_URL}/settlements/${groupId}`;
+
+      console.log(
+        "FETCHING SETTLEMENTS FROM:",
+        settlementUrl
+      );
+
       const response = await fetch(
-        `http://localhost:5000/api/settlements/${groupId}`,
+        settlementUrl,
         {
+          method: "GET",
           headers: {
             Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
           },
         }
+      );
+
+      console.log(
+        "SETTLEMENT HTTP STATUS:",
+        response.status
+      );
+
+      console.log(
+        "SETTLEMENT RESPONSE OK:",
+        response.ok
       );
 
       const data = await response.json();
 
       console.log(
-  "SETTLEMENT RESPONSE:",
-  JSON.stringify(data, null, 2)
-);
+        "SETTLEMENT RESPONSE:",
+        JSON.stringify(data, null, 2)
+      );
 
       if (!response.ok) {
         throw new Error(
-          data.message || "Failed to fetch settlements"
+          data.message ||
+            "Failed to fetch settlements"
         );
       }
 
-      setSettlements(
+      const formattedSettlements =
         (data.settlements || []).map((payment) => ({
           expenseId: Number(payment.expenseId),
 
           expenseDescription:
-            payment.expenseDescription || "Expense",
+            payment.expenseDescription ||
+            "Expense",
 
           expenseTotal:
             Number(payment.expenseTotal) || 0,
@@ -83,9 +120,17 @@ const [settlements, setSettlements] = useState([]);
             payment.toName ||
             `User ${payment.to}`,
 
-          amount: Number(payment.amount),
-        }))
+          amount:
+            Number(payment.amount) || 0,
+        }));
+
+      console.log(
+        "FORMATTED SETTLEMENTS:",
+        formattedSettlements
       );
+
+      setSettlements(formattedSettlements);
+
     } catch (err) {
       console.error(
         "FETCH SETTLEMENTS ERROR:",
@@ -97,6 +142,7 @@ const [settlements, setSettlements] = useState([]);
           ? err.message
           : "Failed to load settlements"
       );
+
     } finally {
       setLoading(false);
     }
@@ -113,9 +159,13 @@ const [settlements, setSettlements] = useState([]);
       if (!grouped[payment.expenseId]) {
         grouped[payment.expenseId] = {
           expenseId: payment.expenseId,
+
           expenseDescription:
             payment.expenseDescription,
-          expenseTotal: payment.expenseTotal,
+
+          expenseTotal:
+            payment.expenseTotal,
+
           payments: [],
         };
       }
@@ -124,6 +174,11 @@ const [settlements, setSettlements] = useState([]);
         payment
       );
     }
+
+    console.log(
+      "GROUPED SETTLEMENT EXPENSES:",
+      grouped
+    );
 
     return Object.values(grouped);
   }, [settlements]);
@@ -134,7 +189,7 @@ const [settlements, setSettlements] = useState([]);
 
   const total = settlements.reduce(
     (sum, payment) =>
-      sum + Number(payment.amount),
+      sum + Number(payment.amount || 0),
     0
   );
 
@@ -149,30 +204,67 @@ const [settlements, setSettlements] = useState([]);
 
       const token = localStorage.getItem("token");
 
-      if (!token) {
-        throw new Error("You are not logged in.");
-      }
+      console.log(
+        "===== MARK EXPENSE AS SETTLED ====="
+      );
 
       console.log(
-        "MARKING EXPENSE AS SETTLED:",
+        "GROUP ID:",
+        groupId
+      );
+
+      console.log(
+        "EXPENSE ID:",
         expenseId
       );
 
+      console.log(
+        "TOKEN EXISTS:",
+        !!token
+      );
+
+      if (!token) {
+        throw new Error(
+          "You are not logged in."
+        );
+      }
+
+      const settleUrl =
+        `${API_URL}/settlements/${groupId}/expenses/${expenseId}/settle`;
+
+      console.log(
+        "PATCH URL:",
+        settleUrl
+      );
+
       const response = await fetch(
-        `http://localhost:5000/api/settlements/${groupId}/expenses/${expenseId}/settle`,
+        settleUrl,
         {
           method: "PATCH",
+
           headers: {
             Authorization: `Bearer ${token}`,
+            "Content-Type":
+              "application/json",
           },
         }
+      );
+
+      console.log(
+        "SETTLE HTTP STATUS:",
+        response.status
+      );
+
+      console.log(
+        "SETTLE RESPONSE OK:",
+        response.ok
       );
 
       const data = await response.json();
 
       console.log(
         "MARK EXPENSE SETTLED RESPONSE:",
-        data
+        JSON.stringify(data, null, 2)
       );
 
       if (!response.ok) {
@@ -181,6 +273,10 @@ const [settlements, setSettlements] = useState([]);
             "Failed to mark expense as settled"
         );
       }
+
+      console.log(
+        "EXPENSE SETTLED SUCCESSFULLY"
+      );
 
       await fetchSettlements();
 
@@ -195,6 +291,7 @@ const [settlements, setSettlements] = useState([]);
           ? err.message
           : "Failed to mark expense as settled"
       );
+
     } finally {
       setSettlingExpenseId(null);
     }
@@ -450,7 +547,7 @@ const [settlements, setSettlements] = useState([]);
                       {expense.payments
                         .reduce(
                           (sum, payment) =>
-                            sum + payment.amount,
+                            sum + Number(payment.amount || 0),
                           0
                         )
                         .toFixed(2)}
@@ -498,7 +595,7 @@ const [settlements, setSettlements] = useState([]);
                           </div>
 
                           <p className="text-lg font-medium text-blue-400">
-                            ₹{payment.amount.toFixed(2)}
+                            ₹{Number(payment.amount || 0).toFixed(2)}
                           </p>
 
                         </div>

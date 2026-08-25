@@ -6,7 +6,8 @@
 import Link from "next/link";
 import { useState } from "react";
 
-const API_URL = "http://localhost:5000/api";
+const API_URL =
+  "https://smart-expense-splitter-paiy.onrender.com/api";
 
 export default function Dashboard() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -61,9 +62,10 @@ export default function Dashboard() {
       console.error("Delete account error:", error);
 
       alert(
-        error?.message ||
-          "Something went wrong while deleting your account."
-      );
+    error instanceof Error
+      ? error.message
+      : "Something went wrong while deleting your account."
+  );
 
       setDeleting(false);
       setShowDeleteConfirm(false);

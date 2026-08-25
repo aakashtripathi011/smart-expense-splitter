@@ -29,6 +29,6 @@
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts",
     "**/*.mts"
-  ],
+, "app/dashboard/page.jsx", "app/receipt/page.jsx", "app/page.jsx", "app/split/page.jsx", "app/split/page.jsx"  ],
   "exclude": ["node_modules"]
 }
