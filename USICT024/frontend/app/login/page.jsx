@@ -480,7 +480,7 @@ export default function Login() {
               {/* GUEST */}
 
               <Link
-                href="/"
+                href="/quest"
                 className="
                   block
                   w-full

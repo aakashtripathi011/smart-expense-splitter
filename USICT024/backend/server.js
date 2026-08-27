@@ -32,6 +32,7 @@ app.use(
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+
 // =====================================
 // DATABASE TEST
 // =====================================
@@ -68,6 +69,8 @@ app.use("/api/groups", groupRoutes);
 app.use("/api/expenses", expenseRoutes);
 
 app.use("/api/settlements", settlementRoutes);
+
+
 
 // =====================================
 // HOME
