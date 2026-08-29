@@ -159,7 +159,7 @@ File Handling: Multer handles receipt/image uploads.
 Authentication: JWT is used to protect authenticated functionality.
                       
 
-
+```text
 🔄 Application Flow
 
 Regular User Flow
@@ -208,10 +208,12 @@ Calculate Expense Split
 Generate Settlement
      ↓
 Download PDF
+```
+
+```text
 🤖 AI Receipt Processing
 
 Smart Expense Splitter uses the Google Gemini API to understand uploaded receipt images.
-
 
 Processing Pipeline
 
@@ -228,6 +230,7 @@ Structured Expense Data
 User Review
       ↓
 Expense Calculation
+```
 
 The extracted information is presented to the user for review rather than being treated as automatically final.
 
