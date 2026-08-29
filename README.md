@@ -358,32 +358,32 @@ Make sure the environment variable names match the configuration used by your ap
 📸 Screenshots
 🔐 Login / Signup
 
-
+[![Login Page](./screenshots/login.jpeg)](./screenshots/login.jpeg)
 
 
 🏠 Dashboard
 
-
+[![Dashboard](./screenshots/dashboard.jpeg)](./screenshots/dashboard.jpeg)
 
 
 👥 Groups
 
-
+[![Groups](./screenshots/groups.jpeg)](./screenshots/groups.jpeg)
 
 
 💰 Expenses
 
-
+[![Expenses](./screenshots/expenses.jpeg)](./screenshots/expenses.jpeg)
 
 
 ⚡ Guest Mode
 
-
+[![Guest Mode](./screenshots/guest-mode.jpeg)](./screenshots/guest-mode.jpeg)
 
 
 🧾 AI Receipt Processing
 
-
+[![AI Receipt Processing](./screenshots/receipt.jpeg)](./screenshots/receipt.jpeg)
 
 
 🚀 Deployment
@@ -445,6 +445,7 @@ Automated expense calculations
 Group expense management
 Account-free Guest Mode
 PDF generation
+
 📌 Project Status
 
 🚧 Under Development
