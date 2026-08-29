@@ -98,7 +98,10 @@ This allows users to:
 Keep a record of the calculation
 Share the result with participants
 Refer back to the settlement later
+
+
 🛠️ Tech Stack
+
 Technology	Purpose
 Next.js 16	Frontend framework
 React 19	Frontend UI
@@ -118,30 +121,43 @@ Render	Backend deployment
 
 
 🏗️ System Architecture
-                         ┌───────────────────┐
-                         │       User        │
-                         └─────────┬─────────┘
-                                   │
-                                   ▼
-                         ┌───────────────────┐
-                         │     Frontend      │
-                         │  Next.js + React  │
-                         └─────────┬─────────┘
-                                   │
-                              REST API
-                                   │
-                                   ▼
-                         ┌───────────────────┐
-                         │      Backend      │
-                         │ Node.js + Express │
-                         └───────┬─────┬─────┘
-                                 │     │
-                    ┌────────────┘     └────────────┐
-                    ▼                               ▼
-          ┌──────────────────┐            ┌──────────────────┐
-          │   PostgreSQL     │            │  Google Gemini   │
-          │      Neon        │            │    AI / OCR      │
-          └──────────────────┘            └──────────────────┘
+```text
+                         ┌──────────────────────┐
+                         │        User          │
+                         └──────────┬───────────┘
+                                    │
+                                    ▼
+                         ┌──────────────────────┐
+                         │      Frontend        │
+                         │  Next.js + React      │
+                         │   TypeScript + CSS    │
+                         └──────────┬───────────┘
+                                    │
+                              HTTP / REST API
+                                    │
+                                    ▼
+                         ┌──────────────────────┐
+                         │       Backend        │
+                         │   Node.js + Express   │
+                         └──────────┬───────────┘
+                                    │
+                    ┌───────────────┼───────────────┐
+                    │               │               │
+                    ▼               ▼               ▼
+             ┌────────────┐  ┌─────────────┐  ┌──────────────┐
+             │ PostgreSQL │  │ Gemini API  │  │ File Upload  │
+             │    Neon    │  │ AI / Receipt│  │   Multer     │
+             └────────────┘  │ Processing   │  └──────────────┘
+                             └─────────────┘
+```
+Architecture Overview
+Frontend: Next.js and React provide the user interface.
+Backend: Node.js and Express handle API requests and application logic.
+Database: PostgreSQL stores users, groups, expenses, and related data.
+AI Processing: Google Gemini processes uploaded receipt images.
+File Handling: Multer handles receipt/image uploads.
+Authentication: JWT is used to protect authenticated functionality.
+                      
 
 
 🔄 Application Flow
@@ -262,6 +278,7 @@ Other private credentials
 
 
 📁 Project Structure
+```text
 smart-expense-splitter/
 │
 └── USICT024/
@@ -293,6 +310,7 @@ smart-expense-splitter/
     │   └── receipt.jpeg
     │
     └── README.md
+```
 
     
 ⚙️ Installation & Setup
