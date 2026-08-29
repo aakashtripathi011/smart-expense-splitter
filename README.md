@@ -391,7 +391,6 @@ Make sure the environment variable names match the configuration used by your ap
 
 [![AI Receipt Processing](./screenshots/receipt.jpeg)](./screenshots/receipt.jpeg)
 
-
 🚀 Deployment
 Component	Platform
 Frontend	Vercel
